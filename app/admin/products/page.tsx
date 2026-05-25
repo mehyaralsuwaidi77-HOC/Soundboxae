@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import Image from "next/image";
 import {
   Plus, Pencil, Trash2, Eye, EyeOff, Star, Package,
-  X, Loader2, ChevronUp, ChevronDown, StarOff,
+  X, Loader2, ChevronUp, ChevronDown, StarOff, Upload,
 } from "lucide-react";
+import { supabase, isSupabaseConfigured } from "@/lib/supabase/client";
 import type { DbProduct } from "@/lib/supabase/types";
 
 const CATEGORIES = ["Bundles", "Audio", "Lighting", "LED Screens", "Staging", "DJ Equipment", "Other"];
@@ -49,6 +50,7 @@ interface FormState {
   specsRaw: string;
   bundleIncludesRaw: string;
   image_url: string;
+  storage_path: string;
   is_bundle: boolean;
   is_visible: boolean;
   is_featured: boolean;
@@ -63,6 +65,7 @@ const DEFAULT_FORM: FormState = {
   specsRaw: "",
   bundleIncludesRaw: "",
   image_url: "",
+  storage_path: "",
   is_bundle: false,
   is_visible: true,
   is_featured: false,
@@ -79,6 +82,9 @@ export default function AdminProductsPage() {
   const [saving, setSaving] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [filterCat, setFilterCat] = useState("All");
+  const [uploading, setUploading] = useState(false);
+  const [dragging, setDragging] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   const fetchProducts = useCallback(async () => {
     setLoading(true);
@@ -113,6 +119,7 @@ export default function AdminProductsPage() {
       specsRaw: formatSpecs(p.specs as Record<string, unknown> | null),
       bundleIncludesRaw: formatBundleIncludes(p.specs as Record<string, unknown> | null),
       image_url: p.image_url ?? "",
+      storage_path: p.storage_path ?? "",
       is_bundle: p.is_bundle,
       is_visible: p.is_visible,
       is_featured: p.is_featured,
@@ -136,6 +143,7 @@ export default function AdminProductsPage() {
         description: form.description.trim(),
         specs,
         image_url: form.image_url.trim() || null,
+        storage_path: form.storage_path.trim() || null,
         is_bundle: form.is_bundle,
         is_visible: form.is_visible,
         is_featured: form.is_featured,
@@ -184,6 +192,37 @@ export default function AdminProductsPage() {
     } catch {
       alert("Delete failed");
     }
+  }
+
+  async function uploadImage(file: File) {
+    if (!isSupabaseConfigured) return;
+    setUploading(true);
+    try {
+      const ext = file.name.split(".").pop();
+      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+      const path = `products/${Date.now()}_${safeName}`;
+      const { error: upErr } = await supabase.storage
+        .from("product-images")
+        .upload(path, file, { contentType: file.type, upsert: false });
+      if (upErr) { alert(`Upload failed: ${upErr.message}`); return; }
+      const { data: { publicUrl } } = supabase.storage.from("product-images").getPublicUrl(path);
+      setForm((f) => ({ ...f, image_url: publicUrl, storage_path: path }));
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (file) uploadImage(file);
+    e.target.value = "";
+  }
+
+  function handleDrop(e: React.DragEvent) {
+    e.preventDefault();
+    setDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file && file.type.startsWith("image/")) uploadImage(file);
   }
 
   async function handleReorder(id: string, dir: -1 | 1) {
@@ -508,21 +547,67 @@ export default function AdminProductsPage() {
               />
             </div>
 
-            {/* Image URL */}
+            {/* Image upload */}
             <div>
-              <label className="block text-xs font-medium mb-1.5" style={{ color: "#A7A7B3" }}>Image URL</label>
-              <input
-                value={form.image_url}
-                onChange={(e) => setForm((f) => ({ ...f, image_url: e.target.value }))}
-                className="w-full bg-[#181824] rounded-lg px-3 py-2.5 text-sm border outline-none"
-                style={{ borderColor: "rgba(214,168,79,0.2)", color: "#FFF" }}
-                placeholder="/Category%20BG/Audio%20Systems%20BG.png"
-              />
-              {form.image_url && (
-                <div className="mt-2 w-24 h-16 rounded-lg overflow-hidden relative" style={{ background: "#111118" }}>
-                  <Image src={form.image_url} alt="preview" fill className="object-cover" unoptimized />
-                </div>
-              )}
+              <label className="block text-xs font-medium mb-1.5" style={{ color: "#A7A7B3" }}>Product Image</label>
+
+              {/* Drop zone */}
+              <div
+                onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+                onDragLeave={() => setDragging(false)}
+                onDrop={handleDrop}
+                onClick={() => fileRef.current?.click()}
+                className="relative cursor-pointer rounded-xl border-2 border-dashed flex flex-col items-center justify-center gap-2 py-7 transition-[border-color,background] duration-150"
+                style={{
+                  borderColor: dragging ? "#D6A84F" : "rgba(214,168,79,0.2)",
+                  background: dragging ? "rgba(214,168,79,0.05)" : "rgba(255,255,255,0.02)",
+                }}
+              >
+                {form.image_url ? (
+                  <>
+                    <div className="w-28 h-20 rounded-lg overflow-hidden relative">
+                      <Image src={form.image_url} alt="preview" fill className="object-cover" unoptimized />
+                    </div>
+                    <p className="text-xs" style={{ color: "#5A5A6E" }}>Click or drag to replace</p>
+                  </>
+                ) : (
+                  <>
+                    <Upload size={22} style={{ color: "#D6A84F" }} />
+                    <p className="text-sm font-medium" style={{ color: "#A7A7B3" }}>
+                      Drop image here or <span style={{ color: "#D6A84F" }}>click to browse</span>
+                    </p>
+                    <p className="text-xs" style={{ color: "#5A5A6E" }}>PNG, JPG, WebP — max 10 MB</p>
+                  </>
+                )}
+                {uploading && (
+                  <div className="absolute inset-0 flex items-center justify-center rounded-xl" style={{ background: "rgba(13,13,18,0.85)" }}>
+                    <Loader2 size={26} className="animate-spin" style={{ color: "#D6A84F" }} />
+                  </div>
+                )}
+              </div>
+              <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
+
+              {/* URL fallback */}
+              <div className="mt-2 flex items-center gap-2">
+                <span className="text-xs shrink-0" style={{ color: "#5A5A6E" }}>or paste URL:</span>
+                <input
+                  value={form.image_url}
+                  onChange={(e) => setForm((f) => ({ ...f, image_url: e.target.value, storage_path: "" }))}
+                  className="flex-1 bg-[#181824] rounded-lg px-3 py-1.5 text-xs border outline-none"
+                  style={{ borderColor: "rgba(214,168,79,0.15)", color: "#FFF" }}
+                  placeholder="https://… or /Category BG/…"
+                />
+                {form.image_url && (
+                  <button
+                    type="button"
+                    onClick={() => setForm((f) => ({ ...f, image_url: "", storage_path: "" }))}
+                    className="shrink-0 p-1 rounded transition-[opacity] hover:opacity-70"
+                    style={{ color: "#5A5A6E" }}
+                  >
+                    <X size={13} />
+                  </button>
+                )}
+              </div>
             </div>
 
             {/* Toggles */}

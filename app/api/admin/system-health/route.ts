@@ -53,14 +53,17 @@ export async function GET() {
     })
   );
 
-  // Check buckets
-  const { data: bucketList, error: bucketErr } = await db.storage.listBuckets();
-  const existingBuckets = new Set((bucketList ?? []).map((b) => b.name));
-  const bucketChecks = BUCKETS.map((name) => ({
-    bucket: name,
-    exists: existingBuckets.has(name),
-    error: bucketErr?.message ?? null,
-  }));
+  // Check buckets individually — listBuckets() can silently return empty with SSR client
+  const bucketChecks = await Promise.all(
+    BUCKETS.map(async (name) => {
+      try {
+        const { data, error } = await db.storage.getBucket(name);
+        return { bucket: name, exists: !!data && !error, error: error?.message ?? null };
+      } catch (e: unknown) {
+        return { bucket: name, exists: false, error: e instanceof Error ? e.message : "Unknown" };
+      }
+    })
+  );
 
   return NextResponse.json({
     configured: true,
