@@ -1,7 +1,19 @@
 import Link from "next/link";
 import Image from "next/image";
 import { MapPin, Phone, Mail, MessageCircle } from "lucide-react";
+
+function InstagramIcon({ size = 15 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="2" y="2" width="20" height="20" rx="5" ry="5"/>
+      <circle cx="12" cy="12" r="4"/>
+      <circle cx="17.5" cy="6.5" r="0.5" fill="currentColor" stroke="none"/>
+    </svg>
+  );
+}
 import { whatsappGeneral, WHATSAPP_NUMBER_DISPLAY } from "@/lib/whatsapp";
+
+const INSTAGRAM_URL = "https://www.instagram.com/soundboxdubai/";
 
 const serviceLinks = [
   { label: "Audio Systems", href: "/services/audio-systems" },
@@ -49,15 +61,28 @@ export default function Footer() {
               Dubai&apos;s premier audio visual rental company — delivering premium
               sound, lighting, and event production across the UAE.
             </p>
-            <a
-              href={whatsappGeneral()}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 btn-gold"
-            >
-              <MessageCircle size={15} />
-              WhatsApp Us
-            </a>
+            <div className="flex flex-wrap gap-3">
+              <a
+                href={whatsappGeneral()}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 btn-gold"
+              >
+                <MessageCircle size={15} />
+                WhatsApp Us
+              </a>
+              <a
+                href={INSTAGRAM_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Follow Soundbox Dubai on Instagram"
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-[background,color] duration-150"
+                style={{ background: "rgba(255,255,255,0.05)", color: "#A7A7B3", border: "1px solid rgba(255,255,255,0.08)" }}
+              >
+                <InstagramIcon size={15} />
+                Instagram
+              </a>
+            </div>
           </div>
 
           {/* Services */}

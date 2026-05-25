@@ -1,6 +1,18 @@
 import Link from "next/link";
 import { MessageCircle, CalendarCheck } from "lucide-react";
+
+function InstagramIcon({ size = 16 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="2" y="2" width="20" height="20" rx="5" ry="5"/>
+      <circle cx="12" cy="12" r="4"/>
+      <circle cx="17.5" cy="6.5" r="0.5" fill="currentColor" stroke="none"/>
+    </svg>
+  );
+}
 import { whatsappGeneral } from "@/lib/whatsapp";
+
+const INSTAGRAM_URL = "https://www.instagram.com/soundboxdubai/";
 
 export default function CTASection() {
   return (
@@ -48,6 +60,17 @@ export default function CTASection() {
           >
             <MessageCircle size={16} />
             WhatsApp Us Now
+          </a>
+          <a
+            href={INSTAGRAM_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Follow Soundbox Dubai on Instagram"
+            className="inline-flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-semibold transition-[background,color,border-color] duration-150"
+            style={{ background: "rgba(255,255,255,0.04)", color: "#A7A7B3", border: "1px solid rgba(255,255,255,0.1)" }}
+          >
+            <InstagramIcon size={16} />
+            Follow on Instagram
           </a>
         </div>
       </div>

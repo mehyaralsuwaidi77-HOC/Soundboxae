@@ -173,6 +173,23 @@ export interface DbAnalyticsEvent {
   created_at: string;
 }
 
+export interface DbProduct {
+  id: string;
+  title: string;
+  slug: string;
+  category?: string;
+  description?: string;
+  specs?: Record<string, unknown>;
+  image_url?: string;
+  storage_path?: string;
+  is_bundle: boolean;
+  is_featured: boolean;
+  is_visible: boolean;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface DbWebsiteSetting {
   id: string;
   key: string;

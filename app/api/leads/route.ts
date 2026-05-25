@@ -4,7 +4,7 @@ import { isServerConfigured, serverSupabase } from "@/lib/supabase/server";
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { name, email, phone, eventType, eventDate, guests, services, notes, source, transcript } = body;
+    const { name, email, phone, eventType, eventDate, guests, services, notes, source, transcript, whatsappSent } = body;
 
     if (!name || !eventType) {
       return NextResponse.json({ error: "name and eventType are required" }, { status: 400 });
@@ -57,6 +57,7 @@ export async function POST(req: NextRequest) {
           message: notes ?? null,
           status: "new",
           priority: "normal",
+          whatsapp_sent: whatsappSent === true,
           ai_chat_transcript: transcript ?? null,
         })
         .select("id")

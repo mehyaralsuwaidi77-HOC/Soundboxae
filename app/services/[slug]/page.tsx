@@ -4,7 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { CheckCircle, MessageCircle, ArrowLeft } from "lucide-react";
 import SiteShell from "@/components/layout/SiteShell";
-import TrackedWhatsAppButton from "@/components/ui/TrackedWhatsAppButton";
+import WhatsAppLeadModal from "@/components/ui/WhatsAppLeadModal";
 import { services, getServiceBySlug } from "@/data/services";
 import { whatsappInquiry } from "@/lib/whatsapp";
 
@@ -87,7 +87,7 @@ export default async function ServicePage({ params }: Props) {
               {service.subtitle}
             </p>
             <div className="flex flex-wrap gap-3">
-              <TrackedWhatsAppButton
+              <WhatsAppLeadModal
                 href={whatsappInquiry(service.title)}
                 className="btn-gold inline-flex items-center gap-2"
                 source="service_page"
@@ -95,7 +95,7 @@ export default async function ServicePage({ params }: Props) {
               >
                 <MessageCircle size={15} />
                 Inquire Now
-              </TrackedWhatsAppButton>
+              </WhatsAppLeadModal>
               <Link href="/products" className="btn-ghost">
                 Browse Equipment
               </Link>
@@ -194,14 +194,14 @@ export default async function ServicePage({ params }: Props) {
               <p className="text-sm mb-4" style={{ color: "#A7A7B3" }}>
                 Contact our team for a custom quote tailored to your event.
               </p>
-              <TrackedWhatsAppButton
+              <WhatsAppLeadModal
                 href={whatsappInquiry(service.title)}
                 className="btn-gold w-full block text-center"
                 source="service_sidebar"
                 service={service.title}
               >
                 WhatsApp Us
-              </TrackedWhatsAppButton>
+              </WhatsAppLeadModal>
             </div>
           </div>
         </div>

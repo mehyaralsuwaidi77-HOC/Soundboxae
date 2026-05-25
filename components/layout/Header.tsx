@@ -5,7 +5,19 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { Menu, X, ChevronDown } from "lucide-react";
+
+function InstagramIcon({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="2" y="2" width="20" height="20" rx="5" ry="5"/>
+      <circle cx="12" cy="12" r="4"/>
+      <circle cx="17.5" cy="6.5" r="0.5" fill="currentColor" stroke="none"/>
+    </svg>
+  );
+}
 import { whatsappGeneral } from "@/lib/whatsapp";
+
+const INSTAGRAM_URL = "https://www.instagram.com/soundboxdubai/";
 
 const serviceLinks = [
   { label: "Audio Systems", href: "/services/audio-systems" },
@@ -265,7 +277,7 @@ export default function Header() {
             </div>
           ))}
 
-          <div className="pt-4 pb-2">
+          <div className="pt-4 pb-2 space-y-2">
             <a
               href={whatsappGeneral()}
               target="_blank"
@@ -273,6 +285,16 @@ export default function Header() {
               className="btn-gold w-full block text-center text-[13px]"
             >
               WhatsApp Us
+            </a>
+            <a
+              href={INSTAGRAM_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Follow Soundbox Dubai on Instagram"
+              className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-[13px] font-medium transition-[background,color] duration-150"
+              style={{ background: "rgba(255,255,255,0.04)", color: "#A7A7B3", border: "1px solid rgba(255,255,255,0.07)" }}
+            >
+              <InstagramIcon size={14} /> Follow on Instagram
             </a>
           </div>
         </nav>

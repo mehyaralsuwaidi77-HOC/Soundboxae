@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import "./globals.css";
+import AnalyticsTracker from "@/components/analytics/AnalyticsTracker";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://www.soundboxdubai.com"),
@@ -94,6 +96,7 @@ const jsonLd = {
   },
   sameAs: [
     "https://wa.me/971553320051",
+    "https://www.instagram.com/soundboxdubai/",
   ],
 };
 
@@ -115,6 +118,9 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-full flex flex-col bg-[#0B0B0F] text-white antialiased">
+        <Suspense fallback={null}>
+          <AnalyticsTracker />
+        </Suspense>
         {children}
       </body>
     </html>
