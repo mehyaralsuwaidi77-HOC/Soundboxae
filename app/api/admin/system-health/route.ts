@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { isServerConfigured, serverSupabase } from "@/lib/supabase/server";
+import { createClient } from "@supabase/supabase-js";
+import { isServerConfigured } from "@/lib/supabase/server";
 
 const TABLES = [
   "client_logos",
@@ -28,15 +29,12 @@ export async function GET() {
     });
   }
 
-  let db: Awaited<ReturnType<typeof serverSupabase>>;
-  try {
-    db = await serverSupabase();
-  } catch (e: unknown) {
-    return NextResponse.json(
-      { configured: true, error: e instanceof Error ? e.message : "Failed to create Supabase client" },
-      { status: 500 }
-    );
-  }
+  // Use createClient directly — createServerClient (SSR) can silently fail for storage admin ops
+  const db = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { autoRefreshToken: false, persistSession: false } }
+  );
 
   // Check tables in parallel
   const tableChecks = await Promise.all(

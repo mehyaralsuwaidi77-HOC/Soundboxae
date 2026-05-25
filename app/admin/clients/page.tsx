@@ -2,18 +2,20 @@
 
 import { useEffect, useState, useRef } from "react";
 import Image from "next/image";
-import { Plus, Trash2, Eye, EyeOff, Upload, RefreshCw, ExternalLink } from "lucide-react";
+import { Plus, Trash2, Eye, EyeOff, Upload, RefreshCw, ExternalLink, Pencil, X } from "lucide-react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase/client";
 import type { DbClientLogo } from "@/lib/supabase/types";
 
 const emptyForm = { clientName: "", logoUrl: "", storagePath: "", websiteUrl: "", visible: true };
 
 export default function AdminClientsPage() {
-  const [clients, setClients]   = useState<DbClientLogo[]>([]);
-  const [showForm, setShowForm] = useState(false);
-  const [form, setForm]         = useState(emptyForm);
+  const [clients, setClients]     = useState<DbClientLogo[]>([]);
+  const [showForm, setShowForm]   = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [form, setForm]           = useState(emptyForm);
   const [uploading, setUploading] = useState(false);
-  const [loading, setLoading]   = useState(true);
+  const [loading, setLoading]     = useState(true);
+  const [saving, setSaving]       = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   async function load() {
@@ -50,21 +52,58 @@ export default function AdminClientsPage() {
     const result = await handleUpload(file);
     if (result) setForm((f) => ({ ...f, logoUrl: result.url, storagePath: result.path }));
     setUploading(false);
+    e.target.value = "";
   }
 
-  async function handleAdd() {
-    if (!form.clientName || !form.logoUrl || !isSupabaseConfigured) return;
-    await supabase.from("client_logos").insert({
-      client_name: form.clientName,
-      logo_url: form.logoUrl,
-      storage_path: form.storagePath || null,
-      website_url: form.websiteUrl || null,
-      is_visible: form.visible,
-      sort_order: clients.length,
-    });
-    await load();
+  function openAdd() {
+    setEditingId(null);
     setForm(emptyForm);
+    setShowForm(true);
+  }
+
+  function openEdit(client: DbClientLogo) {
+    setEditingId(client.id);
+    setForm({
+      clientName:  client.client_name,
+      logoUrl:     client.logo_url,
+      storagePath: client.storage_path ?? "",
+      websiteUrl:  client.website_url ?? "",
+      visible:     client.is_visible,
+    });
+    setShowForm(true);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function closeForm() {
     setShowForm(false);
+    setEditingId(null);
+    setForm(emptyForm);
+  }
+
+  async function handleSave() {
+    if (!form.clientName || !form.logoUrl || !isSupabaseConfigured) return;
+    setSaving(true);
+    if (editingId) {
+      await supabase.from("client_logos").update({
+        client_name:  form.clientName,
+        logo_url:     form.logoUrl,
+        storage_path: form.storagePath || null,
+        website_url:  form.websiteUrl || null,
+        is_visible:   form.visible,
+      }).eq("id", editingId);
+    } else {
+      await supabase.from("client_logos").insert({
+        client_name:  form.clientName,
+        logo_url:     form.logoUrl,
+        storage_path: form.storagePath || null,
+        website_url:  form.websiteUrl || null,
+        is_visible:   form.visible,
+        sort_order:   clients.length,
+      });
+    }
+    await load();
+    closeForm();
+    setSaving(false);
   }
 
   async function handleDelete(id: string) {
@@ -84,7 +123,7 @@ export default function AdminClientsPage() {
         <h1 className="text-2xl font-bold" style={{ fontFamily: "var(--font-display)" }}>Client Logos</h1>
         <div className="glass-card rounded-xl p-10 text-center space-y-2">
           <p className="text-sm font-medium" style={{ color: "#F2994A" }}>Supabase required</p>
-          <p className="text-sm" style={{ color: "#5A5A6E" }}>Configure Supabase to manage client logos with image uploads and cloud storage.</p>
+          <p className="text-sm" style={{ color: "#5A5A6E" }}>Configure Supabase to manage client logos.</p>
         </div>
       </div>
     );
@@ -99,13 +138,22 @@ export default function AdminClientsPage() {
         </div>
         <div className="flex gap-3">
           <button onClick={load} className="p-2 rounded-lg glass-card" style={{ color: "#D6A84F" }}><RefreshCw size={15} /></button>
-          <button onClick={() => setShowForm(!showForm)} className="btn-gold inline-flex items-center gap-2"><Plus size={15} /> Add Client</button>
+          <button onClick={openAdd} className="btn-gold inline-flex items-center gap-2"><Plus size={15} /> Add Client</button>
         </div>
       </div>
 
+      {/* Add / Edit form */}
       {showForm && (
-        <div className="glass-card rounded-xl p-6 space-y-4">
-          <h3 className="font-bold" style={{ fontFamily: "var(--font-display)" }}>Add Client Logo</h3>
+        <div className="glass-card rounded-xl p-6 space-y-4" style={{ border: editingId ? "1px solid rgba(214,168,79,0.3)" : undefined }}>
+          <div className="flex items-center justify-between">
+            <h3 className="font-bold" style={{ fontFamily: "var(--font-display)" }}>
+              {editingId ? "Edit Client" : "Add Client Logo"}
+            </h3>
+            <button onClick={closeForm} className="p-1 rounded transition-[opacity] hover:opacity-70" style={{ color: "#5A5A6E" }}>
+              <X size={16} />
+            </button>
+          </div>
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs mb-1" style={{ color: "#A7A7B3" }}>Client Name *</label>
@@ -166,9 +214,17 @@ export default function AdminClientsPage() {
               </label>
             </div>
           </div>
+
           <div className="flex gap-3">
-            <button onClick={handleAdd} className="btn-gold">Add Client</button>
-            <button onClick={() => setShowForm(false)} className="btn-ghost">Cancel</button>
+            <button
+              onClick={handleSave}
+              disabled={saving || !form.clientName || !form.logoUrl}
+              className="btn-gold disabled:opacity-60 inline-flex items-center gap-2"
+            >
+              {saving && <span className="w-3 h-3 rounded-full border-2 border-[#050505] border-t-transparent animate-spin" />}
+              {editingId ? "Save Changes" : "Add Client"}
+            </button>
+            <button onClick={closeForm} className="btn-ghost">Cancel</button>
           </div>
         </div>
       )}
@@ -187,7 +243,7 @@ export default function AdminClientsPage() {
             <div
               key={client.id}
               className="group glass-card rounded-xl p-4 flex flex-col items-center gap-3"
-              style={{ opacity: client.is_visible ? 1 : 0.4 }}
+              style={{ opacity: client.is_visible ? 1 : 0.4, outline: editingId === client.id ? "2px solid #D6A84F" : undefined, outlineOffset: "2px" }}
             >
               <div
                 className="relative w-full h-16 rounded-lg overflow-hidden"
@@ -215,6 +271,14 @@ export default function AdminClientsPage() {
               )}
               <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-[opacity] duration-200">
                 <button
+                  onClick={() => openEdit(client)}
+                  className="w-7 h-7 rounded flex items-center justify-center"
+                  style={{ background: "rgba(214,168,79,0.1)", color: "#D6A84F" }}
+                  title="Edit"
+                >
+                  <Pencil size={12} />
+                </button>
+                <button
                   onClick={() => toggleVisible(client.id, client.is_visible)}
                   className="w-7 h-7 rounded flex items-center justify-center"
                   style={{ background: "rgba(214,168,79,0.1)", color: client.is_visible ? "#D6A84F" : "#5A5A6E" }}
@@ -226,6 +290,7 @@ export default function AdminClientsPage() {
                   onClick={() => handleDelete(client.id)}
                   className="w-7 h-7 rounded flex items-center justify-center"
                   style={{ background: "rgba(235,87,87,0.1)", color: "#EB5757" }}
+                  title="Delete"
                 >
                   <Trash2 size={12} />
                 </button>

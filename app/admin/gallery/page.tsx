@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import Image from "next/image";
-import { Plus, Trash2, Eye, EyeOff, Upload, RefreshCw, Link as LinkIcon } from "lucide-react";
+import { Plus, Trash2, Eye, EyeOff, Upload, RefreshCw, Link as LinkIcon, Pencil, X } from "lucide-react";
 import { galleryItems as defaultItems, galleryCategories } from "@/data/gallery";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase/client";
 import {
@@ -49,15 +49,16 @@ function lsToDisplay(item: GalleryItem): DisplayItem {
 }
 
 export default function AdminGalleryPage() {
-  const [items, setItems]         = useState<DisplayItem[]>([]);
-  const [showForm, setShowForm]   = useState(false);
+  const [items, setItems]           = useState<DisplayItem[]>([]);
+  const [showForm, setShowForm]     = useState(false);
+  const [editingId, setEditingId]   = useState<string | null>(null);
   const [showIgForm, setShowIgForm] = useState(false);
-  const [form, setForm]           = useState(emptyForm);
-  const [igForm, setIgForm]       = useState(emptyIgForm);
-  const [uploading, setUploading] = useState(false);
-  const [igLoading, setIgLoading] = useState(false);
-  const [igError, setIgError]     = useState<string | null>(null);
-  const [loading, setLoading]     = useState(true);
+  const [form, setForm]             = useState(emptyForm);
+  const [igForm, setIgForm]         = useState(emptyIgForm);
+  const [uploading, setUploading]   = useState(false);
+  const [igLoading, setIgLoading]   = useState(false);
+  const [igError, setIgError]       = useState<string | null>(null);
+  const [loading, setLoading]       = useState(true);
   const fileRef = useRef<HTMLInputElement>(null);
 
   async function load() {
@@ -146,7 +147,33 @@ export default function AdminGalleryPage() {
     }
   }
 
-  async function handleAdd() {
+  function openEdit(item: DisplayItem) {
+    setEditingId(item.id);
+    setForm({
+      title:       item.title,
+      category:    item.category,
+      image:       item.image,
+      storagePath: "",
+      location:    item.location ?? "",
+      year:        new Date().getFullYear(),
+      tags:        "",
+      featured:    item.featured,
+      visible:     item.visible,
+      altText:     "",
+      caption:     item.caption ?? "",
+    });
+    setShowForm(true);
+    setShowIgForm(false);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function closeForm() {
+    setShowForm(false);
+    setEditingId(null);
+    setForm(emptyForm);
+  }
+
+  async function handleSave() {
     if (!form.title || !form.image) return;
     if (isSupabaseConfigured) {
       const { data: section } = await supabase
@@ -154,37 +181,61 @@ export default function AdminGalleryPage() {
         .select("id")
         .eq("slug", form.category)
         .maybeSingle();
-      await supabase.from("gallery_items").insert({
-        title: form.title,
-        image_url: form.image,
-        storage_path: form.storagePath || null,
-        caption: form.caption || null,
-        alt_text: form.altText || form.title,
-        is_featured: form.featured,
-        is_visible: form.visible,
-        section_id: (section as { id: string } | null)?.id ?? null,
-        source: "admin",
-        metadata: {
-          location: form.location,
-          year: form.year,
-          tags: form.tags.split(",").map((t) => t.trim()).filter(Boolean),
-        },
-        sort_order: items.length,
-      });
+      const sectionId = (section as { id: string } | null)?.id ?? null;
+      const metadata = {
+        location: form.location,
+        year: form.year,
+        tags: form.tags.split(",").map((t) => t.trim()).filter(Boolean),
+      };
+
+      if (editingId) {
+        await supabase.from("gallery_items").update({
+          title:        form.title,
+          image_url:    form.image,
+          ...(form.storagePath ? { storage_path: form.storagePath } : {}),
+          caption:      form.caption || null,
+          alt_text:     form.altText || form.title,
+          is_featured:  form.featured,
+          is_visible:   form.visible,
+          section_id:   sectionId,
+          metadata,
+        }).eq("id", editingId);
+      } else {
+        await supabase.from("gallery_items").insert({
+          title:        form.title,
+          image_url:    form.image,
+          storage_path: form.storagePath || null,
+          caption:      form.caption || null,
+          alt_text:     form.altText || form.title,
+          is_featured:  form.featured,
+          is_visible:   form.visible,
+          section_id:   sectionId,
+          source:       "admin",
+          metadata,
+          sort_order:   items.length,
+        });
+      }
       await load();
     } else {
-      saveGalleryItem({
-        title: form.title, category: form.category, image: form.image,
-        location: form.location, year: form.year,
-        tags: form.tags.split(",").map((t) => t.trim()).filter(Boolean),
-        featured: form.featured, visible: form.visible,
-        altText: form.altText || form.title,
-        caption: form.caption || undefined,
-      });
+      if (editingId) {
+        updateGalleryItem(editingId, {
+          title: form.title, category: form.category, image: form.image,
+          location: form.location, featured: form.featured, visible: form.visible,
+          caption: form.caption || undefined,
+        });
+      } else {
+        saveGalleryItem({
+          title: form.title, category: form.category, image: form.image,
+          location: form.location, year: form.year,
+          tags: form.tags.split(",").map((t) => t.trim()).filter(Boolean),
+          featured: form.featured, visible: form.visible,
+          altText: form.altText || form.title,
+          caption: form.caption || undefined,
+        });
+      }
       await load();
     }
-    setForm(emptyForm);
-    setShowForm(false);
+    closeForm();
   }
 
   async function handleDelete(id: string) {
@@ -224,7 +275,7 @@ export default function AdminGalleryPage() {
           >
             <LinkIcon size={14} /> Instagram
           </button>
-          <button onClick={() => { setShowForm(!showForm); setShowIgForm(false); }} className="btn-gold inline-flex items-center gap-2"><Plus size={15} /> Add Photo</button>
+          <button onClick={() => { if (showForm && !editingId) { closeForm(); } else { closeForm(); setShowForm(true); setShowIgForm(false); } }} className="btn-gold inline-flex items-center gap-2"><Plus size={15} /> Add Photo</button>
         </div>
       </div>
 
@@ -320,8 +371,15 @@ export default function AdminGalleryPage() {
       )}
 
       {showForm && (
-        <div className="glass-card rounded-xl p-6 space-y-4">
-          <h3 className="font-bold" style={{ fontFamily: "var(--font-display)" }}>Add Gallery Item</h3>
+        <div className="glass-card rounded-xl p-6 space-y-4" style={{ border: editingId ? "1px solid rgba(214,168,79,0.3)" : undefined }}>
+          <div className="flex items-center justify-between">
+            <h3 className="font-bold" style={{ fontFamily: "var(--font-display)" }}>
+              {editingId ? "Edit Gallery Item" : "Add Gallery Item"}
+            </h3>
+            <button onClick={closeForm} className="p-1 rounded transition-[opacity] hover:opacity-70" style={{ color: "#5A5A6E" }}>
+              <X size={16} />
+            </button>
+          </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {[
               { key: "title",    label: "Title *" },
@@ -412,8 +470,10 @@ export default function AdminGalleryPage() {
             </div>
           </div>
           <div className="flex gap-3">
-            <button onClick={handleAdd} className="btn-gold">Add Item</button>
-            <button onClick={() => setShowForm(false)} className="btn-ghost">Cancel</button>
+            <button onClick={handleSave} className="btn-gold">
+              {editingId ? "Save Changes" : "Add Item"}
+            </button>
+            <button onClick={closeForm} className="btn-ghost">Cancel</button>
           </div>
         </div>
       )}
@@ -445,6 +505,14 @@ export default function AdminGalleryPage() {
                   </span>
                 )}
                 <div className="absolute top-2 right-2 flex gap-1.5 opacity-0 group-hover:opacity-100 transition-[opacity] duration-200">
+                  <button
+                    onClick={() => openEdit(item)}
+                    className="w-7 h-7 rounded-full flex items-center justify-center"
+                    style={{ background: "rgba(214,168,79,0.9)", color: "#050505" }}
+                    title="Edit"
+                  >
+                    <Pencil size={12} />
+                  </button>
                   <button
                     onClick={() => toggleVisible(item.id, item.visible)}
                     className="w-7 h-7 rounded-full flex items-center justify-center"
