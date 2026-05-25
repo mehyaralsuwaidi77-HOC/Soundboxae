@@ -12,7 +12,7 @@ export async function POST(req: NextRequest) {
 
     // ── Supabase path ─────────────────────────────────────────────────────────
     if (isServerConfigured()) {
-      const db = serverSupabase();
+      const db = await serverSupabase();
 
       // Upsert customer
       let customerId: string | undefined;

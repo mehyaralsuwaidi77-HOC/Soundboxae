@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Database not configured" }, { status: 503 });
     }
 
-    const db = serverSupabase();
+    const db = await serverSupabase();
 
     // Upsert customer
     let customerId: string | undefined;

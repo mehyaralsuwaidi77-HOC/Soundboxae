@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const db = serverSupabase();
+    const db = await serverSupabase();
 
     const { data: booking, error } = await db
       .from("bookings")

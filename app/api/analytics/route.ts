@@ -15,7 +15,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: true });
     }
 
-    const db = serverSupabase();
+    const db = await serverSupabase();
     const ua = req.headers.get("user-agent") ?? undefined;
 
     await db.from("analytics_events").insert({
