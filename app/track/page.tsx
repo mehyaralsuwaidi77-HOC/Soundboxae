@@ -2,111 +2,175 @@
 
 import { useState } from "react";
 import {
-  Search,
-  CheckCircle,
-  Clock,
-  AlertCircle,
-  Truck,
-  Package,
-  Wrench,
-  FileText,
-  CreditCard,
-  Phone,
-  MessageCircle,
-  CalendarDays,
-  MapPin,
+  Search, CheckCircle, Clock, AlertCircle, Truck, Package, Wrench,
+  FileText, CreditCard, Phone, MessageCircle, CalendarDays, MapPin,
 } from "lucide-react";
 import SiteShell from "@/components/layout/SiteShell";
 import SectionHeader from "@/components/ui/SectionHeader";
-import { getBookingByRef, BOOKING_STATUS_LABELS, PAYMENT_STATUS_LABELS, type Booking } from "@/lib/storage";
+import { isSupabaseConfigured } from "@/lib/supabase/client";
+import { getBookingByRef, BOOKING_STATUS_LABELS, PAYMENT_STATUS_LABELS } from "@/lib/storage";
+import { BOOKING_STATUS_LABELS as DB_BOOKING_LABELS, PAYMENT_STATUS_LABELS as DB_PAYMENT_LABELS } from "@/lib/supabase/types";
+import type { DbBooking } from "@/lib/supabase/types";
+
+// ── Unified display type ───────────────────────────────────────────────────────
+interface TrackData {
+  reference: string;
+  eventType: string;
+  eventDate: string;
+  venue: string;
+  services: string[];
+  status: string;
+  statusLabel: string;
+  paymentStatus: string;
+  paymentLabel: string;
+  timeline: { time: string; message: string; isSuccess: boolean }[];
+  managerPhone: string;
+  setupTeamPhone: string;
+  clientName: string;
+}
 
 // ── Demo booking ───────────────────────────────────────────────────────────────
-const demoBooking: Booking = {
-  id: "demo",
-  referenceNumber: "SBX-2025-0001",
-  clientName: "Mohammed Al Rashid",
-  clientEmail: "demo@example.com",
-  clientPhone: "+971501234567",
+const DEMO: TrackData = {
+  reference: "SBX-2025-0001",
   eventType: "Corporate Gala",
   eventDate: "2025-07-15",
   venue: "JW Marriott Marquis, Dubai",
   services: ["Sound System", "Lighting", "LED Screen", "Stage"],
   status: "confirmed",
+  statusLabel: "Confirmed",
   paymentStatus: "paid",
-  createdAt: "2025-06-01T10:00:00Z",
-  updatedAt: "2025-06-10T14:30:00Z",
+  paymentLabel: "Paid in Full",
   timeline: [
-    { time: "2025-06-01T10:00:00Z", message: "Booking received and under review.", type: "info" },
-    { time: "2025-06-03T09:00:00Z", message: "Booking confirmed. Technical team assigned.", type: "success" },
-    { time: "2025-06-10T14:30:00Z", message: "Payment confirmed in full. Booking reference activated.", type: "success" },
+    { time: "2025-06-01T10:00:00Z", message: "Booking received and under review.", isSuccess: false },
+    { time: "2025-06-03T09:00:00Z", message: "Booking confirmed. Technical team assigned.", isSuccess: true },
+    { time: "2025-06-10T14:30:00Z", message: "Payment confirmed in full. Booking reference activated.", isSuccess: true },
   ],
+  managerPhone: "+971553320051",
+  setupTeamPhone: "+971553320051",
+  clientName: "Mohammed Al Rashid",
 };
 
-// ── Status display config ──────────────────────────────────────────────────────
+// ── Status config ──────────────────────────────────────────────────────────────
 const STATUS_CONFIG: Record<string, { color: string; icon: React.ReactNode }> = {
+  // DB format (underscores)
+  new_inquiry:         { color: "#F2994A", icon: <FileText size={15} /> },
+  quotation_sent:      { color: "#2F80ED", icon: <FileText size={15} /> },
+  awaiting_payment:    { color: "#F2C94C", icon: <CreditCard size={15} /> },
+  confirmed:           { color: "#D6A84F", icon: <CheckCircle size={15} /> },
+  preparing_equipment: { color: "#9B51E0", icon: <Package size={15} /> },
+  team_on_the_way:     { color: "#56CCF2", icon: <Truck size={15} /> },
+  setup_in_progress:   { color: "#27AE60", icon: <Wrench size={15} /> },
+  completed:           { color: "#219653", icon: <CheckCircle size={15} /> },
+  cancelled:           { color: "#EB5757", icon: <AlertCircle size={15} /> },
+  // localStorage format (hyphens)
   "new-inquiry":         { color: "#F2994A", icon: <FileText size={15} /> },
   "quotation-sent":      { color: "#2F80ED", icon: <FileText size={15} /> },
   "awaiting-payment":    { color: "#F2C94C", icon: <CreditCard size={15} /> },
-  "confirmed":           { color: "#D6A84F", icon: <CheckCircle size={15} /> },
   "preparing-equipment": { color: "#9B51E0", icon: <Package size={15} /> },
   "team-on-the-way":     { color: "#56CCF2", icon: <Truck size={15} /> },
   "setup-in-progress":   { color: "#27AE60", icon: <Wrench size={15} /> },
-  "completed":           { color: "#219653", icon: <CheckCircle size={15} /> },
-  "cancelled":           { color: "#EB5757", icon: <AlertCircle size={15} /> },
-  // Legacy values
-  "pending":             { color: "#A7A7B3", icon: <Clock size={15} /> },
+  pending:               { color: "#A7A7B3", icon: <Clock size={15} /> },
   "in-progress":         { color: "#27AE60", icon: <Wrench size={15} /> },
 };
 
-const PAYMENT_CONFIG: Record<string, { color: string }> = {
-  unpaid:  { color: "#EB5757" },
-  deposit: { color: "#F2994A" },
-  partial: { color: "#F2C94C" },
-  paid:    { color: "#27AE60" },
+const PAYMENT_COLOR: Record<string, string> = {
+  unpaid: "#EB5757", deposit_pending: "#F2994A", deposit: "#F2994A",
+  partially_paid: "#F2C94C", partial: "#F2C94C",
+  paid_100: "#27AE60", paid: "#27AE60", refunded: "#A7A7B3",
 };
 
-function getStatusDisplay(status: string) {
-  const cfg = STATUS_CONFIG[status];
-  const label = BOOKING_STATUS_LABELS[status as keyof typeof BOOKING_STATUS_LABELS] ?? status;
-  return { color: cfg?.color ?? "#A7A7B3", icon: cfg?.icon ?? <Clock size={15} />, label };
+// ── Adapters ──────────────────────────────────────────────────────────────────
+function fromDb(booking: DbBooking): TrackData {
+  return {
+    reference:     booking.booking_reference ?? "",
+    eventType:     booking.event_type ?? "—",
+    eventDate:     booking.event_date ?? "—",
+    venue:         booking.event_location ?? "—",
+    services:      booking.services ?? [],
+    status:        booking.status,
+    statusLabel:   DB_BOOKING_LABELS[booking.status] ?? booking.status,
+    paymentStatus: booking.payment_status,
+    paymentLabel:  DB_PAYMENT_LABELS[booking.payment_status] ?? booking.payment_status,
+    timeline: (booking.status_updates ?? [])
+      .filter((u) => u.visible_to_customer)
+      .map((u) => ({
+        time:      u.created_at,
+        message:   u.description ?? u.title ?? u.status,
+        isSuccess: ["confirmed","completed","setup_in_progress","team_on_the_way"].includes(u.status),
+      })),
+    managerPhone:   booking.manager_phone ?? "+971553320051",
+    setupTeamPhone: booking.setup_team_phone ?? "+971553320051",
+    clientName:     booking.customer?.full_name ?? "",
+  };
 }
 
-function getPaymentDisplay(status: string) {
-  const cfg = PAYMENT_CONFIG[status];
-  const label = PAYMENT_STATUS_LABELS[status as keyof typeof PAYMENT_STATUS_LABELS] ?? status;
-  return { color: cfg?.color ?? "#A7A7B3", label };
-}
-
-// ── Metadata ──────────────────────────────────────────────────────────────────
+// ── Component ──────────────────────────────────────────────────────────────────
 export default function TrackPage() {
   const [ref, setRef]         = useState("");
-  const [booking, setBooking] = useState<Booking | null>(null);
+  const [track, setTrack]     = useState<TrackData | null>(null);
   const [error, setError]     = useState("");
   const [loading, setLoading] = useState(false);
 
-  function handleSearch() {
+  async function handleSearch() {
     const trimmed = ref.trim().toUpperCase();
     if (!trimmed) return;
     setLoading(true);
     setError("");
-    setTimeout(() => {
-      if (trimmed === "SBX-2025-0001") {
-        setBooking(demoBooking);
+
+    // Demo booking
+    if (trimmed === "SBX-2025-0001") {
+      await new Promise((r) => setTimeout(r, 500));
+      setTrack(DEMO);
+      setLoading(false);
+      return;
+    }
+
+    try {
+      if (isSupabaseConfigured) {
+        const res = await fetch(`/api/tracking?ref=${encodeURIComponent(trimmed)}`);
+        if (!res.ok) {
+          setTrack(null);
+          setError("No booking found with that reference. Please check and try again.");
+          setLoading(false);
+          return;
+        }
+        const json = await res.json();
+        setTrack(fromDb(json.booking as DbBooking));
       } else {
+        await new Promise((r) => setTimeout(r, 400));
         const found = getBookingByRef(trimmed);
         if (found) {
-          setBooking(found);
+          setTrack({
+            reference:     found.referenceNumber ?? trimmed,
+            eventType:     found.eventType,
+            eventDate:     found.eventDate,
+            venue:         found.venue,
+            services:      found.services,
+            status:        found.status,
+            statusLabel:   BOOKING_STATUS_LABELS[found.status as keyof typeof BOOKING_STATUS_LABELS] ?? found.status,
+            paymentStatus: found.paymentStatus,
+            paymentLabel:  PAYMENT_STATUS_LABELS[found.paymentStatus as keyof typeof PAYMENT_STATUS_LABELS] ?? found.paymentStatus,
+            timeline:      found.timeline.map((t) => ({
+              time: t.time, message: t.message, isSuccess: t.type === "success",
+            })),
+            managerPhone:   found.managerPhone ?? "+971553320051",
+            setupTeamPhone: found.setupTeamPhone ?? "+971553320051",
+            clientName:     found.clientName,
+          });
         } else {
-          setBooking(null);
+          setTrack(null);
           setError("No booking found with that reference. Please check and try again.");
         }
       }
-      setLoading(false);
-    }, 600);
+    } catch {
+      setError("Unable to fetch booking. Please try again.");
+    }
+
+    setLoading(false);
   }
 
-  const statusDisplay  = booking ? getStatusDisplay(booking.status)         : null;
-  const paymentDisplay = booking ? getPaymentDisplay(booking.paymentStatus) : null;
+  const statusCfg     = track ? (STATUS_CONFIG[track.status] ?? { color: "#A7A7B3", icon: <Clock size={15} /> }) : null;
+  const paymentColor  = track ? (PAYMENT_COLOR[track.paymentStatus] ?? "#A7A7B3") : "#A7A7B3";
 
   return (
     <SiteShell>
@@ -114,10 +178,7 @@ export default function TrackPage() {
       <section className="relative pt-36 pb-16 overflow-hidden" style={{ background: "#050505" }}>
         <div
           className="absolute inset-0 pointer-events-none"
-          style={{
-            background:
-              "radial-gradient(ellipse 60% 50% at 50% 0%, rgba(214,168,79,0.08) 0%, transparent 60%)",
-          }}
+          style={{ background: "radial-gradient(ellipse 60% 50% at 50% 0%, rgba(214,168,79,0.08) 0%, transparent 60%)" }}
         />
         <div className="relative max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <SectionHeader
@@ -157,16 +218,10 @@ export default function TrackPage() {
                 {loading ? "Searching…" : "Track"}
               </button>
             </div>
-            {error && (
-              <p className="mt-3 text-sm" style={{ color: "#EB5757" }}>{error}</p>
-            )}
+            {error && <p className="mt-3 text-sm" style={{ color: "#EB5757" }}>{error}</p>}
             <p className="mt-3 text-xs" style={{ color: "#5A5A6E" }}>
               Try demo:{" "}
-              <button
-                className="underline"
-                onClick={() => setRef("SBX-2025-0001")}
-                style={{ color: "#D6A84F" }}
-              >
+              <button className="underline" onClick={() => setRef("SBX-2025-0001")} style={{ color: "#D6A84F" }}>
                 SBX-2025-0001
               </button>
             </p>
@@ -175,7 +230,7 @@ export default function TrackPage() {
       </section>
 
       {/* ── Result ────────────────────────────────────────────────────────── */}
-      {booking && statusDisplay && paymentDisplay && (
+      {track && statusCfg && (
         <section className="pb-20" style={{ background: "#0B0B0F" }}>
           <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
 
@@ -189,51 +244,50 @@ export default function TrackPage() {
             >
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
                 <div>
-                  <p className="text-xs uppercase tracking-widest mb-1" style={{ color: "#5A5A6E" }}>
-                    Booking Reference
+                  <p className="text-xs uppercase tracking-widest mb-1" style={{ color: "#5A5A6E" }}>Booking Reference</p>
+                  <p className="text-2xl font-bold text-gold-gradient" style={{ fontFamily: "var(--font-display)" }}>
+                    {track.reference}
                   </p>
-                  <p
-                    className="text-2xl font-bold text-gold-gradient"
-                    style={{ fontFamily: "var(--font-display)" }}
-                  >
-                    {booking.referenceNumber}
-                  </p>
+                  {track.clientName && (
+                    <p className="text-sm mt-1" style={{ color: "#A7A7B3" }}>{track.clientName}</p>
+                  )}
                 </div>
                 <div className="flex flex-col gap-2 items-start sm:items-end">
                   <div
                     className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-semibold"
                     style={{
-                      background: `${statusDisplay.color}18`,
-                      color: statusDisplay.color,
-                      border: `1px solid ${statusDisplay.color}30`,
+                      background: `${statusCfg.color}18`,
+                      color: statusCfg.color,
+                      border: `1px solid ${statusCfg.color}30`,
                     }}
                   >
-                    {statusDisplay.icon}
-                    {statusDisplay.label}
+                    {statusCfg.icon}
+                    {track.statusLabel}
                   </div>
                   <div
                     className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold"
-                    style={{
-                      background: `${paymentDisplay.color}18`,
-                      color: paymentDisplay.color,
-                    }}
+                    style={{ background: `${paymentColor}18`, color: paymentColor }}
                   >
-                    {paymentDisplay.label}
+                    {track.paymentLabel}
                   </div>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-6">
                 {[
-                  { icon: <Package size={14} />,     label: "Event Type", value: booking.eventType },
+                  { icon: <Package size={14} />,     label: "Event Type", value: track.eventType },
                   {
                     icon: <CalendarDays size={14} />, label: "Event Date",
-                    value: new Date(booking.eventDate).toLocaleDateString("en-AE", {
-                      weekday: "long", year: "numeric", month: "long", day: "numeric",
-                    }),
+                    value: (() => {
+                      try {
+                        return new Date(track.eventDate).toLocaleDateString("en-AE", {
+                          weekday: "long", year: "numeric", month: "long", day: "numeric",
+                        });
+                      } catch { return track.eventDate; }
+                    })(),
                   },
-                  { icon: <MapPin size={14} />,      label: "Venue",    value: booking.venue },
-                  { icon: <CheckCircle size={14} />, label: "Services", value: booking.services.join(" · ") },
+                  { icon: <MapPin size={14} />,      label: "Venue",    value: track.venue },
+                  { icon: <CheckCircle size={14} />, label: "Services", value: track.services.join(" · ") || "—" },
                 ].map((item) => (
                   <div key={item.label} className="flex items-start gap-3">
                     <span style={{ color: "#D6A84F", marginTop: 2 }}>{item.icon}</span>
@@ -247,45 +301,37 @@ export default function TrackPage() {
             </div>
 
             {/* Timeline */}
-            <div className="glass-card rounded-2xl p-8">
-              <h3
-                className="text-xl font-bold mb-6"
-                style={{ fontFamily: "var(--font-display)", color: "#D6A84F" }}
-              >
-                Booking Timeline
-              </h3>
-              <div className="space-y-5">
-                {booking.timeline.map((entry, i) => (
-                  <div key={i} className="flex items-start gap-4">
-                    <div
-                      className="w-2.5 h-2.5 rounded-full shrink-0 mt-1.5"
-                      style={{
-                        background:
-                          entry.type === "success" ? "#27AE60" :
-                          entry.type === "warning"  ? "#EB5757" : "#D6A84F",
-                      }}
-                    />
-                    <div className="flex-1">
-                      <p className="text-sm text-white">{entry.message}</p>
-                      <p className="text-xs mt-1" style={{ color: "#5A5A6E" }}>
-                        {new Date(entry.time).toLocaleString("en-AE")}
-                      </p>
+            {track.timeline.length > 0 && (
+              <div className="glass-card rounded-2xl p-8">
+                <h3 className="text-xl font-bold mb-6" style={{ fontFamily: "var(--font-display)", color: "#D6A84F" }}>
+                  Booking Timeline
+                </h3>
+                <div className="space-y-5">
+                  {track.timeline.map((entry, i) => (
+                    <div key={i} className="flex items-start gap-4">
+                      <div
+                        className="w-2.5 h-2.5 rounded-full shrink-0 mt-1.5"
+                        style={{ background: entry.isSuccess ? "#27AE60" : "#D6A84F" }}
+                      />
+                      <div className="flex-1">
+                        <p className="text-sm text-white">{entry.message}</p>
+                        <p className="text-xs mt-1" style={{ color: "#5A5A6E" }}>
+                          {new Date(entry.time).toLocaleString("en-AE")}
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Map placeholder */}
             <div className="glass-card rounded-2xl p-8">
-              <h3
-                className="text-xl font-bold mb-2"
-                style={{ fontFamily: "var(--font-display)", color: "#D6A84F" }}
-              >
+              <h3 className="text-xl font-bold mb-2" style={{ fontFamily: "var(--font-display)", color: "#D6A84F" }}>
                 Setup Team Location
               </h3>
               <p className="text-sm mb-4" style={{ color: "#A7A7B3" }}>
-                Live team tracking is available on the day of your event. The map will appear here 24 hours before setup begins.
+                Live team tracking is available on the day of your event.
               </p>
               <div
                 className="rounded-xl aspect-video flex items-center justify-center"
@@ -300,40 +346,31 @@ export default function TrackPage() {
 
             {/* Contact */}
             <div className="glass-card rounded-2xl p-8">
-              <h3
-                className="text-xl font-bold mb-6"
-                style={{ fontFamily: "var(--font-display)", color: "#D6A84F" }}
-              >
+              <h3 className="text-xl font-bold mb-6" style={{ fontFamily: "var(--font-display)", color: "#D6A84F" }}>
                 Contact Your Team
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <a
-                  href="tel:+971553320051"
+                  href={`tel:${track.setupTeamPhone}`}
                   className="flex items-center gap-3 rounded-xl p-4 transition-[background] duration-150 hover:bg-[rgba(214,168,79,0.08)]"
                   style={{ background: "rgba(17,17,24,0.8)", border: "1px solid rgba(214,168,79,0.12)" }}
                 >
-                  <div
-                    className="w-10 h-10 rounded-full flex items-center justify-center"
-                    style={{ background: "rgba(214,168,79,0.15)" }}
-                  >
+                  <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ background: "rgba(214,168,79,0.15)" }}>
                     <Phone size={16} style={{ color: "#D6A84F" }} />
                   </div>
                   <div>
                     <p className="text-xs mb-0.5" style={{ color: "#5A5A6E" }}>Call Setup Team</p>
-                    <p className="text-sm font-semibold text-white">+971 55 332 0051</p>
+                    <p className="text-sm font-semibold text-white">{track.setupTeamPhone}</p>
                   </div>
                 </a>
                 <a
-                  href={`https://wa.me/971553320051?text=${encodeURIComponent(`Hi, I'm enquiring about booking ${booking.referenceNumber}`)}`}
+                  href={`https://wa.me/${track.setupTeamPhone.replace(/\D/g, "")}?text=${encodeURIComponent(`Hi, I'm enquiring about booking ${track.reference}`)}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center gap-3 rounded-xl p-4 transition-[background] duration-150 hover:bg-[rgba(214,168,79,0.08)]"
                   style={{ background: "rgba(17,17,24,0.8)", border: "1px solid rgba(214,168,79,0.12)" }}
                 >
-                  <div
-                    className="w-10 h-10 rounded-full flex items-center justify-center"
-                    style={{ background: "rgba(214,168,79,0.15)" }}
-                  >
+                  <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ background: "rgba(214,168,79,0.15)" }}>
                     <MessageCircle size={16} style={{ color: "#D6A84F" }} />
                   </div>
                   <div>

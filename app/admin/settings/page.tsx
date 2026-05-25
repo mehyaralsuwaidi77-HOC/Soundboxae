@@ -2,42 +2,86 @@
 
 import { useEffect, useState } from "react";
 import { CheckCircle, Phone, Mail, Globe, Building2, MessageCircle } from "lucide-react";
+import { supabase, isSupabaseConfigured } from "@/lib/supabase/client";
 import { getAdminSettings, saveAdminSettings, type AdminSettings } from "@/lib/storage";
 
+const SETTING_KEYS: Record<keyof AdminSettings, string> = {
+  managerPhone:       "manager_phone",
+  setupTeamPhone:     "setup_team_phone",
+  whatsappNumber:     "whatsapp_number",
+  notificationEmail:  "notification_email",
+  companyName:        "company_name",
+  companyAddress:     "company_address",
+  websiteUrl:         "website_url",
+};
+
 const DEFAULT_FORM: AdminSettings = {
-  managerPhone: "",
-  setupTeamPhone: "",
-  whatsappNumber: "",
-  notificationEmail: "",
-  companyName: "",
-  companyAddress: "",
-  websiteUrl: "",
+  managerPhone: "", setupTeamPhone: "", whatsappNumber: "",
+  notificationEmail: "", companyName: "", companyAddress: "", websiteUrl: "",
 };
 
 export default function AdminSettingsPage() {
-  const [form, setForm] = useState<AdminSettings>(DEFAULT_FORM);
+  const [form, setForm]   = useState<AdminSettings>(DEFAULT_FORM);
   const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
 
-  useEffect(() => { setForm(getAdminSettings()); }, []);
+  useEffect(() => {
+    async function load() {
+      if (isSupabaseConfigured) {
+        const { data } = await supabase.from("website_settings").select("key, value");
+        if (data && data.length > 0) {
+          const kvMap: Record<string, string> = {};
+          data.forEach((row) => { kvMap[row.key] = String(row.value ?? ""); });
+          setForm({
+            managerPhone:      kvMap["manager_phone"]      ?? "",
+            setupTeamPhone:    kvMap["setup_team_phone"]   ?? "",
+            whatsappNumber:    kvMap["whatsapp_number"]    ?? "",
+            notificationEmail: kvMap["notification_email"] ?? "",
+            companyName:       kvMap["company_name"]       ?? "",
+            companyAddress:    kvMap["company_address"]    ?? "",
+            websiteUrl:        kvMap["website_url"]        ?? "",
+          });
+        }
+      } else {
+        setForm(getAdminSettings());
+      }
+    }
+    load();
+  }, []);
 
   function set(key: keyof AdminSettings, value: string) {
     setForm((prev) => ({ ...prev, [key]: value }));
   }
 
-  function handleSave() {
-    saveAdminSettings(form);
+  async function handleSave() {
+    setSaving(true);
+    if (isSupabaseConfigured) {
+      const upserts = (Object.entries(SETTING_KEYS) as [keyof AdminSettings, string][]).map(
+        ([formKey, dbKey]) => ({
+          key: dbKey,
+          value: form[formKey],
+        })
+      );
+      await supabase.from("website_settings").upsert(upserts, { onConflict: "key" });
+    } else {
+      saveAdminSettings(form);
+    }
+    setSaving(false);
     setSaved(true);
     setTimeout(() => setSaved(false), 3000);
   }
 
+  const inputClass = "w-full bg-[#181824] rounded-lg px-4 py-2.5 text-sm border outline-none transition-[border-color] duration-150 placeholder:text-[#3A3A4E]";
+  const inputStyle = { color: "#FFF", borderColor: "rgba(214,168,79,0.2)" };
+  const focusIn  = (e: React.FocusEvent<HTMLInputElement>) => { e.currentTarget.style.borderColor = "#D6A84F"; };
+  const focusOut = (e: React.FocusEvent<HTMLInputElement>) => { e.currentTarget.style.borderColor = "rgba(214,168,79,0.2)"; };
+
   return (
     <div className="space-y-6 max-w-2xl">
       <div>
-        <h1 className="text-2xl font-bold" style={{ fontFamily: "var(--font-display)" }}>
-          Settings
-        </h1>
+        <h1 className="text-2xl font-bold" style={{ fontFamily: "var(--font-display)" }}>Settings</h1>
         <p className="text-sm" style={{ color: "#A7A7B3" }}>
-          Company profile, contact details, and notification preferences
+          {isSupabaseConfigured ? "Saved to Supabase website_settings table" : "Saved to browser localStorage"}
         </p>
       </div>
 
@@ -49,35 +93,33 @@ export default function AdminSettingsPage() {
 
         <div>
           <label className="flex items-center gap-2 text-xs font-medium mb-1.5" style={{ color: "#A7A7B3" }}>
-            <Phone size={13} style={{ color: "#D6A84F" }} />
-            Manager Phone
+            <Phone size={13} style={{ color: "#D6A84F" }} /> Manager Phone
           </label>
           <input
             type="tel"
             value={form.managerPhone}
             onChange={(e) => set("managerPhone", e.target.value)}
             placeholder="+971553320051"
-            className="w-full bg-[#181824] rounded-lg px-4 py-2.5 text-sm border outline-none transition-[border-color] duration-150 placeholder:text-[#3A3A4E]"
-            style={{ color: "#FFF", borderColor: "rgba(214,168,79,0.2)" }}
-            onFocus={(e) => { (e.currentTarget as HTMLInputElement).style.borderColor = "#D6A84F"; }}
-            onBlur={(e)  => { (e.currentTarget as HTMLInputElement).style.borderColor = "rgba(214,168,79,0.2)"; }}
+            className={inputClass}
+            style={inputStyle}
+            onFocus={focusIn}
+            onBlur={focusOut}
           />
         </div>
 
         <div>
           <label className="flex items-center gap-2 text-xs font-medium mb-1.5" style={{ color: "#A7A7B3" }}>
-            <Phone size={13} style={{ color: "#D6A84F" }} />
-            Setup Team Phone
+            <Phone size={13} style={{ color: "#D6A84F" }} /> Setup Team Phone
           </label>
           <input
             type="tel"
             value={form.setupTeamPhone}
             onChange={(e) => set("setupTeamPhone", e.target.value)}
             placeholder="+971553320051"
-            className="w-full bg-[#181824] rounded-lg px-4 py-2.5 text-sm border outline-none transition-[border-color] duration-150 placeholder:text-[#3A3A4E]"
-            style={{ color: "#FFF", borderColor: "rgba(214,168,79,0.2)" }}
-            onFocus={(e) => { (e.currentTarget as HTMLInputElement).style.borderColor = "#D6A84F"; }}
-            onBlur={(e)  => { (e.currentTarget as HTMLInputElement).style.borderColor = "rgba(214,168,79,0.2)"; }}
+            className={inputClass}
+            style={inputStyle}
+            onFocus={focusIn}
+            onBlur={focusOut}
           />
         </div>
 
@@ -91,27 +133,26 @@ export default function AdminSettingsPage() {
             value={form.whatsappNumber}
             onChange={(e) => set("whatsappNumber", e.target.value)}
             placeholder="971553320051"
-            className="w-full bg-[#181824] rounded-lg px-4 py-2.5 text-sm border outline-none transition-[border-color] duration-150 placeholder:text-[#3A3A4E]"
-            style={{ color: "#FFF", borderColor: "rgba(214,168,79,0.2)" }}
-            onFocus={(e) => { (e.currentTarget as HTMLInputElement).style.borderColor = "#D6A84F"; }}
-            onBlur={(e)  => { (e.currentTarget as HTMLInputElement).style.borderColor = "rgba(214,168,79,0.2)"; }}
+            className={inputClass}
+            style={inputStyle}
+            onFocus={focusIn}
+            onBlur={focusOut}
           />
         </div>
 
         <div>
           <label className="flex items-center gap-2 text-xs font-medium mb-1.5" style={{ color: "#A7A7B3" }}>
-            <Mail size={13} style={{ color: "#D6A84F" }} />
-            Notification Email
+            <Mail size={13} style={{ color: "#D6A84F" }} /> Notification Email
           </label>
           <input
             type="email"
             value={form.notificationEmail}
             onChange={(e) => set("notificationEmail", e.target.value)}
             placeholder="info@soundboxdubai.com"
-            className="w-full bg-[#181824] rounded-lg px-4 py-2.5 text-sm border outline-none transition-[border-color] duration-150 placeholder:text-[#3A3A4E]"
-            style={{ color: "#FFF", borderColor: "rgba(214,168,79,0.2)" }}
-            onFocus={(e) => { (e.currentTarget as HTMLInputElement).style.borderColor = "#D6A84F"; }}
-            onBlur={(e)  => { (e.currentTarget as HTMLInputElement).style.borderColor = "rgba(214,168,79,0.2)"; }}
+            className={inputClass}
+            style={inputStyle}
+            onFocus={focusIn}
+            onBlur={focusOut}
           />
         </div>
       </section>
@@ -124,60 +165,56 @@ export default function AdminSettingsPage() {
 
         <div>
           <label className="flex items-center gap-2 text-xs font-medium mb-1.5" style={{ color: "#A7A7B3" }}>
-            <Building2 size={13} style={{ color: "#D6A84F" }} />
-            Company Name
+            <Building2 size={13} style={{ color: "#D6A84F" }} /> Company Name
           </label>
           <input
             type="text"
             value={form.companyName}
             onChange={(e) => set("companyName", e.target.value)}
             placeholder="Soundbox Electronic Equipment Rental"
-            className="w-full bg-[#181824] rounded-lg px-4 py-2.5 text-sm border outline-none transition-[border-color] duration-150 placeholder:text-[#3A3A4E]"
-            style={{ color: "#FFF", borderColor: "rgba(214,168,79,0.2)" }}
-            onFocus={(e) => { (e.currentTarget as HTMLInputElement).style.borderColor = "#D6A84F"; }}
-            onBlur={(e)  => { (e.currentTarget as HTMLInputElement).style.borderColor = "rgba(214,168,79,0.2)"; }}
+            className={inputClass}
+            style={inputStyle}
+            onFocus={focusIn}
+            onBlur={focusOut}
           />
         </div>
 
         <div>
           <label className="flex items-center gap-2 text-xs font-medium mb-1.5" style={{ color: "#A7A7B3" }}>
-            <Building2 size={13} style={{ color: "#D6A84F" }} />
-            Company Address
+            <Building2 size={13} style={{ color: "#D6A84F" }} /> Company Address
           </label>
           <input
             type="text"
             value={form.companyAddress}
             onChange={(e) => set("companyAddress", e.target.value)}
             placeholder="Dubai, United Arab Emirates"
-            className="w-full bg-[#181824] rounded-lg px-4 py-2.5 text-sm border outline-none transition-[border-color] duration-150 placeholder:text-[#3A3A4E]"
-            style={{ color: "#FFF", borderColor: "rgba(214,168,79,0.2)" }}
-            onFocus={(e) => { (e.currentTarget as HTMLInputElement).style.borderColor = "#D6A84F"; }}
-            onBlur={(e)  => { (e.currentTarget as HTMLInputElement).style.borderColor = "rgba(214,168,79,0.2)"; }}
+            className={inputClass}
+            style={inputStyle}
+            onFocus={focusIn}
+            onBlur={focusOut}
           />
         </div>
 
         <div>
           <label className="flex items-center gap-2 text-xs font-medium mb-1.5" style={{ color: "#A7A7B3" }}>
-            <Globe size={13} style={{ color: "#D6A84F" }} />
-            Website URL
+            <Globe size={13} style={{ color: "#D6A84F" }} /> Website URL
           </label>
           <input
             type="url"
             value={form.websiteUrl}
             onChange={(e) => set("websiteUrl", e.target.value)}
             placeholder="https://www.soundboxdubai.com"
-            className="w-full bg-[#181824] rounded-lg px-4 py-2.5 text-sm border outline-none transition-[border-color] duration-150 placeholder:text-[#3A3A4E]"
-            style={{ color: "#FFF", borderColor: "rgba(214,168,79,0.2)" }}
-            onFocus={(e) => { (e.currentTarget as HTMLInputElement).style.borderColor = "#D6A84F"; }}
-            onBlur={(e)  => { (e.currentTarget as HTMLInputElement).style.borderColor = "rgba(214,168,79,0.2)"; }}
+            className={inputClass}
+            style={inputStyle}
+            onFocus={focusIn}
+            onBlur={focusOut}
           />
         </div>
       </section>
 
-      {/* Save */}
       <div className="flex items-center gap-4">
-        <button onClick={handleSave} className="btn-gold">
-          Save Settings
+        <button onClick={handleSave} disabled={saving} className="btn-gold disabled:opacity-60">
+          {saving ? "Saving…" : "Save Settings"}
         </button>
         {saved && (
           <span className="flex items-center gap-1.5 text-sm" style={{ color: "#27AE60" }}>
@@ -185,22 +222,6 @@ export default function AdminSettingsPage() {
           </span>
         )}
       </div>
-
-      <p
-        className="text-xs rounded-xl px-4 py-3"
-        style={{
-          color: "#5A5A6E",
-          background: "rgba(214,168,79,0.04)",
-          border: "1px solid rgba(214,168,79,0.1)",
-        }}
-      >
-        <span style={{ color: "#D6A84F" }}>Note:</span> Settings are stored in browser localStorage.
-        For multi-device persistence, connect a backend database via{" "}
-        <code className="text-xs px-1 rounded" style={{ background: "#181824", color: "#D6A84F" }}>
-          DATABASE_URL
-        </code>
-        {" "}in .env.local.
-      </p>
     </div>
   );
 }

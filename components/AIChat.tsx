@@ -342,6 +342,17 @@ export default function AIChat() {
           // Ignore API errors — lead is already saved to localStorage
         }
 
+        // Track analytics event (best-effort)
+        fetch("/api/analytics", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            event_name: "ai_chat_completed",
+            event_type: "chat",
+            metadata: { eventType: finalData.eventType, services: finalData.services },
+          }),
+        }).catch(() => {});
+
         await addBot(
           `Thank you, ${finalData.name}! ✅\n\nYour booking request has been received:\n\n📅 Date: ${finalData.eventDate}\n🎉 Event: ${finalData.eventType}\n👥 Guests: ${finalData.guests}\n🎛️ Services: ${finalData.services.join(", ")}\n📞 Phone: ${finalData.phone}\n\nOur team will review your request and contact you shortly.`
         );
