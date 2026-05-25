@@ -15,7 +15,7 @@ function InstagramIcon({ size = 14 }: { size?: number }) {
     </svg>
   );
 }
-import { whatsappGeneral } from "@/lib/whatsapp";
+import { useSettings } from "@/components/providers/SettingsProvider";
 
 const INSTAGRAM_URL = "https://www.instagram.com/soundboxdubai/";
 
@@ -46,6 +46,7 @@ const navLinks = [
 
 export default function Header() {
   const pathname = usePathname();
+  const { whatsappUrl } = useSettings();
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [servicesOpen, setServicesOpen] = useState(false);
@@ -178,7 +179,7 @@ export default function Header() {
           {/* ── Desktop CTA ───────────────────────────────────────────────── */}
           <div className="hidden lg:flex items-center gap-3">
             <a
-              href={whatsappGeneral()}
+              href={whatsappUrl}
               target="_blank"
               rel="noopener noreferrer"
               className="btn-gold text-[12px] py-2.5 px-5"
@@ -279,7 +280,7 @@ export default function Header() {
 
           <div className="pt-4 pb-2 space-y-2">
             <a
-              href={whatsappGeneral()}
+              href={whatsappUrl}
               target="_blank"
               rel="noopener noreferrer"
               className="btn-gold w-full block text-center text-[13px]"

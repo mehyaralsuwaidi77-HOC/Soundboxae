@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
-import { MessageCircle, Phone, CheckCircle } from "lucide-react";
+import Link from "next/link";
+import { MessageCircle, Phone, CheckCircle, ArrowRight } from "lucide-react";
 import SiteShell from "@/components/layout/SiteShell";
 import SectionHeader from "@/components/ui/SectionHeader";
-import { whatsappGeneral, WHATSAPP_NUMBER_DISPLAY } from "@/lib/whatsapp";
+import { whatsappGeneral } from "@/lib/whatsapp";
+import { getSiteSettings } from "@/lib/site-settings";
 
 export const metadata: Metadata = {
   title: "About Us | Soundbox Dubai — AV Equipment Rental",
@@ -18,7 +20,9 @@ const values = [
   "Fast response and flexible scheduling to suit your event needs",
 ];
 
-export default function AboutUsPage() {
+export default async function AboutUsPage() {
+  const settings = await getSiteSettings();
+  const waUrl = whatsappGeneral(settings.whatsappNumber);
   return (
     <SiteShell>
       {/* Hero */}
@@ -175,21 +179,29 @@ export default function AboutUsPage() {
             Get in touch today and let us help make your next event unforgettable.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+            <Link
+              href="/services"
+              className="btn-gold inline-flex items-center gap-2 w-full sm:w-auto justify-center"
+            >
+              <ArrowRight size={15} />
+              Explore Our Services
+            </Link>
             <a
-              href={whatsappGeneral()}
+              href={waUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="btn-gold inline-flex items-center gap-2 w-full sm:w-auto justify-center"
+              className="btn-ghost inline-flex items-center gap-2 w-full sm:w-auto justify-center"
             >
               <MessageCircle size={15} />
               WhatsApp Us
             </a>
             <a
-              href="tel:+971553320051"
-              className="btn-ghost inline-flex items-center gap-2 w-full sm:w-auto justify-center"
+              href={`tel:${settings.managerPhone}`}
+              className="inline-flex items-center gap-2 text-sm font-medium w-full sm:w-auto justify-center transition-[color] duration-150 hover:text-white"
+              style={{ color: "#A7A7B3" }}
             >
               <Phone size={15} />
-              {WHATSAPP_NUMBER_DISPLAY}
+              {settings.whatsappDisplay}
             </a>
           </div>
         </div>

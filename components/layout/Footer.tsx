@@ -11,7 +11,8 @@ function InstagramIcon({ size = 15 }: { size?: number }) {
     </svg>
   );
 }
-import { whatsappGeneral, WHATSAPP_NUMBER_DISPLAY } from "@/lib/whatsapp";
+import { whatsappGeneral } from "@/lib/whatsapp";
+import { getSiteSettings } from "@/lib/site-settings";
 
 const INSTAGRAM_URL = "https://www.instagram.com/soundboxdubai/";
 
@@ -38,7 +39,9 @@ const quickLinks = [
   { label: "Admin", href: "/admin" },
 ];
 
-export default function Footer() {
+export default async function Footer() {
+  const settings = await getSiteSettings();
+  const waUrl = whatsappGeneral(settings.whatsappNumber);
   return (
     <footer
       style={{ background: "#050505", borderTop: "1px solid rgba(214,168,79,0.12)" }}
@@ -63,7 +66,7 @@ export default function Footer() {
             </p>
             <div className="flex flex-wrap gap-3">
               <a
-                href={whatsappGeneral()}
+                href={waUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 btn-gold"
@@ -143,17 +146,17 @@ export default function Footer() {
               <li className="flex items-start gap-3">
                 <MapPin size={16} style={{ color: "#D6A84F", marginTop: 2, flexShrink: 0 }} />
                 <span className="text-sm" style={{ color: "#A7A7B3" }}>
-                  Dubai, United Arab Emirates
+                  {settings.companyAddress}
                 </span>
               </li>
               <li className="flex items-center gap-3">
                 <Phone size={16} style={{ color: "#D6A84F", flexShrink: 0 }} />
                 <a
-                  href="tel:+971553320051"
+                  href={`tel:${settings.managerPhone}`}
                   className="text-sm transition-[color] duration-150 hover:text-white"
                   style={{ color: "#A7A7B3" }}
                 >
-                  {WHATSAPP_NUMBER_DISPLAY}
+                  {settings.whatsappDisplay}
                 </a>
               </li>
               <li className="flex items-center gap-3">
@@ -169,13 +172,13 @@ export default function Footer() {
               <li className="flex items-center gap-3">
                 <MessageCircle size={16} style={{ color: "#D6A84F", flexShrink: 0 }} />
                 <a
-                  href={whatsappGeneral()}
+                  href={waUrl}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-sm transition-[color] duration-150 hover:text-white"
                   style={{ color: "#A7A7B3" }}
                 >
-                  WhatsApp: {WHATSAPP_NUMBER_DISPLAY}
+                  WhatsApp: {settings.whatsappDisplay}
                 </a>
               </li>
             </ul>

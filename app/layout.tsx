@@ -2,6 +2,9 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import "./globals.css";
 import AnalyticsTracker from "@/components/analytics/AnalyticsTracker";
+import { getSiteSettings } from "@/lib/site-settings";
+import { SettingsProvider } from "@/components/providers/SettingsProvider";
+import { whatsappGeneral } from "@/lib/whatsapp";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://www.soundboxdubai.com"),
@@ -56,53 +59,62 @@ export const metadata: Metadata = {
   },
 };
 
-const jsonLd = {
-  "@context": "https://schema.org",
-  "@type": "LocalBusiness",
-  "@id": "https://www.soundboxdubai.com",
-  name: "Soundbox Electronic Equipment Rental",
-  alternateName: "Soundbox Dubai",
-  description:
-    "Dubai's premier audio visual rental company. Sound systems, LED screens, lighting, stages, rigging, DJ equipment and full event production.",
-  url: "https://www.soundboxdubai.com",
-  telephone: "+971553320051",
-  email: "info@soundboxdubai.com",
-  address: {
-    "@type": "PostalAddress",
-    addressLocality: "Dubai",
-    addressCountry: "AE",
-  },
-  geo: {
-    "@type": "GeoCoordinates",
-    latitude: 25.2048,
-    longitude: 55.2708,
-  },
-  areaServed: [
-    { "@type": "City", name: "Dubai" },
-    { "@type": "City", name: "Abu Dhabi" },
-    { "@type": "Country", name: "United Arab Emirates" },
-  ],
-  hasOfferCatalog: {
-    "@type": "OfferCatalog",
-    name: "AV Equipment Rental Services",
-    itemListElement: [
-      { "@type": "Offer", itemOffered: { "@type": "Service", name: "Audio Systems Rental" } },
-      { "@type": "Offer", itemOffered: { "@type": "Service", name: "Lighting Systems Rental" } },
-      { "@type": "Offer", itemOffered: { "@type": "Service", name: "LED Screen Rental" } },
-      { "@type": "Offer", itemOffered: { "@type": "Service", name: "Stage Rental" } },
-      { "@type": "Offer", itemOffered: { "@type": "Service", name: "DJ Equipment Rental" } },
-      { "@type": "Offer", itemOffered: { "@type": "Service", name: "Event Production" } },
-    ],
-  },
-  sameAs: [
-    "https://wa.me/971553320051",
-    "https://www.instagram.com/soundboxdubai/",
-  ],
-};
-
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
+  const settings = await getSiteSettings();
+  const publicSettings = {
+    whatsappNumber: settings.whatsappNumber,
+    whatsappUrl:    whatsappGeneral(settings.whatsappNumber),
+    phone:          settings.managerPhone,
+    phoneDisplay:   settings.whatsappDisplay,
+  };
+
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "LocalBusiness",
+    "@id": "https://www.soundboxdubai.com",
+    name: settings.companyName,
+    alternateName: "Soundbox Dubai",
+    description:
+      "Dubai's premier audio visual rental company. Sound systems, LED screens, lighting, stages, rigging, DJ equipment and full event production.",
+    url: settings.websiteUrl || "https://www.soundboxdubai.com",
+    telephone: settings.managerPhone,
+    email: settings.notificationEmail,
+    address: {
+      "@type": "PostalAddress",
+      addressLocality: "Dubai",
+      streetAddress: settings.companyAddress,
+      addressCountry: "AE",
+    },
+    geo: {
+      "@type": "GeoCoordinates",
+      latitude: 25.2048,
+      longitude: 55.2708,
+    },
+    areaServed: [
+      { "@type": "City", name: "Dubai" },
+      { "@type": "City", name: "Abu Dhabi" },
+      { "@type": "Country", name: "United Arab Emirates" },
+    ],
+    hasOfferCatalog: {
+      "@type": "OfferCatalog",
+      name: "AV Equipment Rental Services",
+      itemListElement: [
+        { "@type": "Offer", itemOffered: { "@type": "Service", name: "Audio Systems Rental" } },
+        { "@type": "Offer", itemOffered: { "@type": "Service", name: "Lighting Systems Rental" } },
+        { "@type": "Offer", itemOffered: { "@type": "Service", name: "LED Screen Rental" } },
+        { "@type": "Offer", itemOffered: { "@type": "Service", name: "Stage Rental" } },
+        { "@type": "Offer", itemOffered: { "@type": "Service", name: "DJ Equipment Rental" } },
+        { "@type": "Offer", itemOffered: { "@type": "Service", name: "Event Production" } },
+      ],
+    },
+    sameAs: [
+      `https://wa.me/${settings.whatsappNumber}`,
+      "https://www.instagram.com/soundboxdubai/",
+    ],
+  };
+
   return (
     <html lang="en" className="h-full">
       <head>
@@ -118,10 +130,12 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-full flex flex-col bg-[#0B0B0F] text-white antialiased">
-        <Suspense fallback={null}>
-          <AnalyticsTracker />
-        </Suspense>
-        {children}
+        <SettingsProvider settings={publicSettings}>
+          <Suspense fallback={null}>
+            <AnalyticsTracker />
+          </Suspense>
+          {children}
+        </SettingsProvider>
       </body>
     </html>
   );

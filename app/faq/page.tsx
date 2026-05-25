@@ -4,7 +4,8 @@ import { MessageCircle, Phone } from "lucide-react";
 import SiteShell from "@/components/layout/SiteShell";
 import SectionHeader from "@/components/ui/SectionHeader";
 import FAQAccordion from "@/components/faq/FAQAccordion";
-import { whatsappLink, WHATSAPP_NUMBER_DISPLAY } from "@/lib/whatsapp";
+import { whatsappLink } from "@/lib/whatsapp";
+import { getSiteSettings } from "@/lib/site-settings";
 
 export const metadata: Metadata = {
   title: "FAQ — Frequently Asked Questions | Soundbox Dubai",
@@ -47,11 +48,29 @@ const faqs = [
   },
 ];
 
-export default function FAQPage() {
-  const waLink = whatsappLink("Hi Soundbox Dubai! I have a question about your AV rental services.");
+export default async function FAQPage() {
+  const settings = await getSiteSettings();
+  const waLink = whatsappLink(
+    "Hi Soundbox Dubai! I have a question about your AV rental services.",
+    settings.whatsappNumber
+  );
+
+  const faqSchema = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: faqs.map((faq) => ({
+      "@type": "Question",
+      name: faq.q,
+      acceptedAnswer: { "@type": "Answer", text: faq.a },
+    })),
+  };
 
   return (
     <SiteShell>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
+      />
       {/* Hero */}
       <section
         className="relative pt-36 pb-20 overflow-hidden"
@@ -126,11 +145,11 @@ export default function FAQPage() {
                 WhatsApp Us
               </a>
               <a
-                href="tel:+971553320051"
+                href={`tel:${settings.managerPhone}`}
                 className="btn-ghost inline-flex items-center gap-2 w-full sm:w-auto justify-center"
               >
                 <Phone size={15} />
-                {WHATSAPP_NUMBER_DISPLAY}
+                {settings.whatsappDisplay}
               </a>
             </div>
           </div>

@@ -7,6 +7,7 @@ import SectionHeader from "@/components/ui/SectionHeader";
 import GoldBadge from "@/components/ui/GoldBadge";
 import { services } from "@/data/services";
 import { whatsappGeneral } from "@/lib/whatsapp";
+import { getSiteSettings } from "@/lib/site-settings";
 
 export const metadata: Metadata = {
   title: "AV Rental Services Dubai",
@@ -21,7 +22,8 @@ const categoryLabels: Record<string, string> = {
   production: "Production",
 };
 
-export default function ServicesPage() {
+export default async function ServicesPage() {
+  const settings = await getSiteSettings();
   const grouped = services.reduce(
     (acc, s) => {
       if (!acc[s.category]) acc[s.category] = [];
@@ -53,7 +55,7 @@ export default function ServicesPage() {
             centered
           />
           <div className="mt-8 flex flex-wrap justify-center gap-3">
-            <a href={whatsappGeneral()} target="_blank" rel="noopener noreferrer" className="btn-gold">
+            <a href={whatsappGeneral(settings.whatsappNumber)} target="_blank" rel="noopener noreferrer" className="btn-gold">
               Get a Quote
             </a>
             <Link href="/products" className="btn-ghost">

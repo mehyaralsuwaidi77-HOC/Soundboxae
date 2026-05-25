@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isServerConfigured, serverSupabase } from "@/lib/supabase/server";
+import { getSiteSettings } from "@/lib/site-settings";
 
 export async function POST(req: NextRequest) {
   try {
@@ -14,7 +15,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Database not configured" }, { status: 503 });
     }
 
-    const db = await serverSupabase();
+    const [db, siteSettings] = await Promise.all([serverSupabase(), getSiteSettings()]);
 
     // Upsert customer
     let customerId: string | undefined;
@@ -51,7 +52,7 @@ export async function POST(req: NextRequest) {
         services: Array.isArray(services) ? services : [],
         status: "new_inquiry",
         payment_status: "unpaid",
-        manager_phone: "+971553320051",
+        manager_phone: siteSettings.managerPhone,
       })
       .select("id, booking_reference")
       .single();

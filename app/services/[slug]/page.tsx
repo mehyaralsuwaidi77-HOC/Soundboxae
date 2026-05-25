@@ -7,6 +7,7 @@ import SiteShell from "@/components/layout/SiteShell";
 import WhatsAppLeadModal from "@/components/ui/WhatsAppLeadModal";
 import { services, getServiceBySlug } from "@/data/services";
 import { whatsappInquiry } from "@/lib/whatsapp";
+import { getSiteSettings } from "@/lib/site-settings";
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -30,6 +31,7 @@ export default async function ServicePage({ params }: Props) {
   const { slug } = await params;
   const service = getServiceBySlug(slug);
   if (!service) notFound();
+  const settings = await getSiteSettings();
 
   const others = services.filter((s) => s.slug !== slug).slice(0, 4);
 
@@ -88,7 +90,7 @@ export default async function ServicePage({ params }: Props) {
             </p>
             <div className="flex flex-wrap gap-3">
               <WhatsAppLeadModal
-                href={whatsappInquiry(service.title)}
+                href={whatsappInquiry(service.title, settings.whatsappNumber)}
                 className="btn-gold inline-flex items-center gap-2"
                 source="service_page"
                 service={service.title}
@@ -195,7 +197,7 @@ export default async function ServicePage({ params }: Props) {
                 Contact our team for a custom quote tailored to your event.
               </p>
               <WhatsAppLeadModal
-                href={whatsappInquiry(service.title)}
+                href={whatsappInquiry(service.title, settings.whatsappNumber)}
                 className="btn-gold w-full block text-center"
                 source="service_sidebar"
                 service={service.title}

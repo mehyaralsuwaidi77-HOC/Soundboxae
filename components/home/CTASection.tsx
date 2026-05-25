@@ -11,10 +11,13 @@ function InstagramIcon({ size = 16 }: { size?: number }) {
   );
 }
 import { whatsappGeneral } from "@/lib/whatsapp";
+import { getSiteSettings } from "@/lib/site-settings";
 
 const INSTAGRAM_URL = "https://www.instagram.com/soundboxdubai/";
 
-export default function CTASection() {
+export default async function CTASection() {
+  const settings = await getSiteSettings();
+  const waUrl = whatsappGeneral(settings.whatsappNumber);
   return (
     <section
       className="py-24 relative overflow-hidden"
@@ -53,7 +56,7 @@ export default function CTASection() {
             Create Booking Request
           </Link>
           <a
-            href={whatsappGeneral()}
+            href={waUrl}
             target="_blank"
             rel="noopener noreferrer"
             className="btn-ghost inline-flex items-center gap-2"

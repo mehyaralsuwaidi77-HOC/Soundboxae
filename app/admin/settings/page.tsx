@@ -81,7 +81,9 @@ export default function AdminSettingsPage() {
       <div>
         <h1 className="text-2xl font-bold" style={{ fontFamily: "var(--font-display)" }}>Settings</h1>
         <p className="text-sm" style={{ color: "#A7A7B3" }}>
-          {isSupabaseConfigured ? "Saved to Supabase website_settings table" : "Saved to browser localStorage"}
+          {isSupabaseConfigured
+            ? "Saved to Supabase — changes take effect on next page load across the entire website"
+            : "Saved to browser localStorage (Supabase not configured)"}
         </p>
       </div>
 

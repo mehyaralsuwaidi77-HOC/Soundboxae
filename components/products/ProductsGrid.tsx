@@ -5,6 +5,7 @@ import { MessageCircle, Package } from "lucide-react";
 import Image from "next/image";
 import GoldBadge from "@/components/ui/GoldBadge";
 import { whatsappInquiry } from "@/lib/whatsapp";
+import { useSettings } from "@/components/providers/SettingsProvider";
 
 export interface NormalizedProduct {
   id: string;
@@ -26,6 +27,7 @@ interface Props {
 }
 
 export default function ProductsGrid({ products, categories }: Props) {
+  const { whatsappNumber } = useSettings();
   const [activeCategory, setActiveCategory] = useState<string>(ALL);
 
   const allCategories = [ALL, ...categories];
@@ -163,7 +165,7 @@ export default function ProductsGrid({ products, categories }: Props) {
 
                   {/* CTA */}
                   <a
-                    href={whatsappInquiry(product.title)}
+                    href={whatsappInquiry(product.title, whatsappNumber)}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="mt-auto btn-gold inline-flex items-center justify-center gap-2 text-xs"

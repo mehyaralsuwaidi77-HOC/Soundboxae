@@ -3,9 +3,10 @@
 import Image from "next/image";
 import Link from "next/link";
 import { MessageCircle, CalendarCheck } from "lucide-react";
-import { whatsappGeneral } from "@/lib/whatsapp";
+import { useSettings } from "@/components/providers/SettingsProvider";
 
 export default function HeroSection() {
+  const { whatsappUrl } = useSettings();
   return (
     <section
       className="relative min-h-screen flex items-center justify-center overflow-hidden noise"
@@ -91,7 +92,7 @@ export default function HeroSection() {
             Create Booking Request
           </Link>
           <a
-            href={whatsappGeneral()}
+            href={whatsappUrl}
             target="_blank"
             rel="noopener noreferrer"
             className="btn-ghost inline-flex items-center gap-2"
