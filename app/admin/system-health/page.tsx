@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { RefreshCw, CheckCircle, XCircle, AlertCircle, Database, HardDrive, Loader2, Zap } from "lucide-react";
+import { RefreshCw, CheckCircle, XCircle, AlertCircle, Database, HardDrive, Loader2, Shield } from "lucide-react";
 
-interface TableCheck { table: string; ok: boolean; error: string | null; count: number | null }
+interface TableCheck  { table: string; ok: boolean; error: string | null; count: number | null }
 interface BucketCheck { bucket: string; exists: boolean; error: string | null }
 
 interface HealthData {
@@ -17,17 +17,23 @@ interface HealthData {
 
 interface SetupResult { bucket: string; status: "created" | "exists" | "error"; message?: string }
 
+const StatusIcon = ({ ok, size = 16 }: { ok: boolean | null; size?: number }) => {
+  if (ok === null) return <AlertCircle size={size} style={{ color: "#F2994A" }} />;
+  return ok
+    ? <CheckCircle size={size} style={{ color: "#27AE60" }} />
+    : <XCircle size={size} style={{ color: "#EB5757" }} />;
+};
+
 export default function SystemHealthPage() {
-  const [health, setHealth]       = useState<HealthData | null>(null);
-  const [loading, setLoading]     = useState(true);
+  const [health, setHealth]             = useState<HealthData | null>(null);
+  const [loading, setLoading]           = useState(true);
   const [setupLoading, setSetupLoading] = useState(false);
   const [setupResults, setSetupResults] = useState<SetupResult[] | null>(null);
-  const [testMsg, setTestMsg]     = useState<{ ok: boolean; msg: string } | null>(null);
 
   const fetchHealth = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/admin/system-health");
+      const res  = await fetch("/api/admin/system-health");
       const data = await res.json();
       setHealth(data);
     } catch {
@@ -52,30 +58,30 @@ export default function SystemHealthPage() {
     }
   }
 
-  async function handleTestAnalytics() {
-    setTestMsg(null);
-    try {
-      const res = await fetch("/api/analytics", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ event_name: "health_check_test", event_type: "system", metadata: { from: "system_health_page" } }),
-      });
-      const data = await res.json();
-      setTestMsg(data.success ? { ok: true, msg: "Analytics event inserted successfully" } : { ok: false, msg: data.error ?? "Insert failed" });
-    } catch (e: unknown) {
-      setTestMsg({ ok: false, msg: e instanceof Error ? e.message : "Network error" });
-    }
-  }
+  const missingSections = health?.tables.filter((t) => !t.ok).length ?? 0;
+  const missingBuckets  = health?.buckets.filter((b) => !b.exists).length ?? 0;
 
-  const StatusIcon = ({ ok, size = 16 }: { ok: boolean | null; size?: number }) => {
-    if (ok === null) return <AlertCircle size={size} style={{ color: "#F2994A" }} />;
-    return ok
-      ? <CheckCircle size={size} style={{ color: "#27AE60" }} />
-      : <XCircle size={size} style={{ color: "#EB5757" }} />;
-  };
+  // Env vars visible client-side
+  const supabaseUrl  = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseAnon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-  const missingSections = !health?.tables.length ? 0 : health.tables.filter((t) => !t.ok).length;
-  const missingBuckets  = !health?.buckets.length ? 0 : health.buckets.filter((b) => !b.exists).length;
+  const envVars = [
+    {
+      name: "NEXT_PUBLIC_SUPABASE_URL",
+      ok: !!supabaseUrl,
+      hint: supabaseUrl ? supabaseUrl.replace(/^https?:\/\//, "").slice(0, 36) + "…" : "not set",
+    },
+    {
+      name: "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+      ok: !!supabaseAnon,
+      hint: supabaseAnon ? "set (" + supabaseAnon.slice(0, 8) + "…)" : "not set",
+    },
+    {
+      name: "SUPABASE_SERVICE_ROLE_KEY",
+      ok: health?.configured ?? false,
+      hint: health?.configured ? "set (server-side)" : "not set",
+    },
+  ];
 
   return (
     <div className="space-y-6 max-w-4xl">
@@ -97,7 +103,7 @@ export default function SystemHealthPage() {
         </button>
       </div>
 
-      {/* Connection summary */}
+      {/* Connection banner */}
       {health && (
         <div
           className="rounded-xl p-5 flex items-center gap-4"
@@ -130,19 +136,16 @@ export default function SystemHealthPage() {
 
       {!loading && health?.configured && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Tables */}
+          {/* Database Tables */}
           <div className="glass-card rounded-xl p-5">
             <div className="flex items-center gap-2 mb-4">
               <Database size={16} style={{ color: "#D6A84F" }} />
-              <h2 className="font-bold" style={{ fontFamily: "var(--font-display)" }}>
-                Database Tables
-              </h2>
-              {missingSections > 0 && (
+              <h2 className="font-bold" style={{ fontFamily: "var(--font-display)" }}>Database Tables</h2>
+              {missingSections > 0 ? (
                 <span className="ml-auto text-xs px-2 py-0.5 rounded-full" style={{ background: "rgba(235,87,87,0.12)", color: "#EB5757" }}>
                   {missingSections} not found
                 </span>
-              )}
-              {missingSections === 0 && (
+              ) : (
                 <span className="ml-auto text-xs px-2 py-0.5 rounded-full" style={{ background: "rgba(39,174,96,0.1)", color: "#27AE60" }}>
                   All OK
                 </span>
@@ -150,7 +153,11 @@ export default function SystemHealthPage() {
             </div>
             <div className="space-y-2">
               {health.tables.map((t) => (
-                <div key={t.table} className="flex items-center justify-between py-1.5 border-b last:border-0" style={{ borderColor: "rgba(255,255,255,0.04)" }}>
+                <div
+                  key={t.table}
+                  className="flex items-center justify-between py-1.5 border-b last:border-0"
+                  style={{ borderColor: "rgba(255,255,255,0.04)" }}
+                >
                   <div className="flex items-center gap-2">
                     <StatusIcon ok={t.ok} />
                     <span className="text-sm font-mono" style={{ color: "#A7A7B3" }}>{t.table}</span>
@@ -175,19 +182,16 @@ export default function SystemHealthPage() {
             )}
           </div>
 
-          {/* Buckets */}
+          {/* Storage Buckets */}
           <div className="glass-card rounded-xl p-5">
             <div className="flex items-center gap-2 mb-4">
               <HardDrive size={16} style={{ color: "#D6A84F" }} />
-              <h2 className="font-bold" style={{ fontFamily: "var(--font-display)" }}>
-                Storage Buckets
-              </h2>
-              {missingBuckets > 0 && (
+              <h2 className="font-bold" style={{ fontFamily: "var(--font-display)" }}>Storage Buckets</h2>
+              {missingBuckets > 0 ? (
                 <span className="ml-auto text-xs px-2 py-0.5 rounded-full" style={{ background: "rgba(235,87,87,0.12)", color: "#EB5757" }}>
                   {missingBuckets} missing
                 </span>
-              )}
-              {missingBuckets === 0 && (
+              ) : (
                 <span className="ml-auto text-xs px-2 py-0.5 rounded-full" style={{ background: "rgba(39,174,96,0.1)", color: "#27AE60" }}>
                   All OK
                 </span>
@@ -195,7 +199,11 @@ export default function SystemHealthPage() {
             </div>
             <div className="space-y-2">
               {health.buckets.map((b) => (
-                <div key={b.bucket} className="flex items-center justify-between py-1.5 border-b last:border-0" style={{ borderColor: "rgba(255,255,255,0.04)" }}>
+                <div
+                  key={b.bucket}
+                  className="flex items-center justify-between py-1.5 border-b last:border-0"
+                  style={{ borderColor: "rgba(255,255,255,0.04)" }}
+                >
                   <div className="flex items-center gap-2">
                     <StatusIcon ok={b.exists} />
                     <span className="text-sm font-mono" style={{ color: "#A7A7B3" }}>{b.bucket}</span>
@@ -210,7 +218,7 @@ export default function SystemHealthPage() {
             {missingBuckets > 0 && (
               <div className="mt-4 space-y-3">
                 <div className="p-3 rounded-lg text-xs" style={{ background: "rgba(242,153,74,0.08)", color: "#F2994A", border: "1px solid rgba(242,153,74,0.2)" }}>
-                  Missing buckets cause &quot;Bucket not found&quot; upload errors. Click below to create them automatically.
+                  Missing buckets will cause upload errors. Click below to create them automatically.
                 </div>
                 <button
                   onClick={handleSetupStorage}
@@ -252,56 +260,33 @@ export default function SystemHealthPage() {
         </div>
       )}
 
-      {/* Quick Tests */}
-      {!loading && health?.configured && (
+      {/* Environment Variables */}
+      {!loading && (
         <div className="glass-card rounded-xl p-5">
           <div className="flex items-center gap-2 mb-4">
-            <Zap size={16} style={{ color: "#D6A84F" }} />
-            <h2 className="font-bold" style={{ fontFamily: "var(--font-display)" }}>Quick Tests</h2>
+            <Shield size={16} style={{ color: "#D6A84F" }} />
+            <h2 className="font-bold" style={{ fontFamily: "var(--font-display)" }}>Environment Variables</h2>
           </div>
-          <div className="flex flex-wrap gap-3">
-            <button
-              onClick={handleTestAnalytics}
-              className="px-4 py-2 rounded-lg text-sm font-medium transition-[background] duration-150"
-              style={{ background: "rgba(214,168,79,0.1)", color: "#D6A84F", border: "1px solid rgba(214,168,79,0.2)" }}
-            >
-              Test Analytics Insert
-            </button>
-          </div>
-          {testMsg && (
-            <div
-              className="mt-3 flex items-center gap-2 text-sm p-3 rounded-lg"
-              style={{
-                background: testMsg.ok ? "rgba(39,174,96,0.08)" : "rgba(235,87,87,0.08)",
-                border: `1px solid ${testMsg.ok ? "rgba(39,174,96,0.2)" : "rgba(235,87,87,0.2)"}`,
-                color: testMsg.ok ? "#27AE60" : "#EB5757",
-              }}
-            >
-              <StatusIcon ok={testMsg.ok} />
-              {testMsg.msg}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Migration instructions */}
-      {!loading && (
-        <div className="glass-card rounded-xl p-5 space-y-3">
-          <h2 className="font-bold" style={{ fontFamily: "var(--font-display)" }}>Setup Instructions</h2>
-          <div className="space-y-2 text-sm" style={{ color: "#A7A7B3" }}>
-            {([
-              { step: "1", text: "Run supabase/migrations/001_initial_schema.sql in Supabase SQL Editor", done: !!((health?.tables.length ?? 0) > 0 && health?.tables.every((t) => t.ok)) },
-              { step: "2", text: "Run supabase/migrations/002_add_missing_columns.sql (fixes products is_featured, gallery Instagram fields)", done: false },
-              { step: "3", text: "Create storage buckets via the button above OR run supabase/migrations/003_storage_buckets.sql", done: !!(health?.buckets.every((b) => b.exists)) },
-              { step: "4", text: "Run supabase/seed.sql to populate gallery sections and website settings", done: false },
-              { step: "5", text: "Ensure NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, and SUPABASE_SERVICE_ROLE_KEY are set in Vercel", done: health?.configured ?? false },
-            ] as { step: string; text: string; done: boolean }[]).map(({ step, text, done }) => (
-              <div key={step} className="flex items-start gap-3">
-                <StatusIcon ok={done} />
-                <span><strong>Step {step}:</strong> {text}</span>
+          <div className="space-y-2">
+            {envVars.map((v) => (
+              <div
+                key={v.name}
+                className="flex items-center justify-between py-2 border-b last:border-0"
+                style={{ borderColor: "rgba(255,255,255,0.04)" }}
+              >
+                <div className="flex items-center gap-2.5">
+                  <StatusIcon ok={v.ok} />
+                  <code className="text-sm" style={{ color: "#A7A7B3" }}>{v.name}</code>
+                </div>
+                <span className="text-xs" style={{ color: v.ok ? "#5A5A6E" : "#EB5757" }}>
+                  {v.hint}
+                </span>
               </div>
             ))}
           </div>
+          <p className="text-xs mt-4" style={{ color: "#3A3A4E" }}>
+            Values are never shown in full. Set these in your Vercel project settings under Environment Variables.
+          </p>
         </div>
       )}
     </div>
