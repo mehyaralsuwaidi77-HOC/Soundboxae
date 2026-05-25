@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { MessageCircle, X, Send, Sparkles, CheckCircle } from "lucide-react";
 import { whatsappBookingRequest } from "@/lib/whatsapp";
 import { saveLead } from "@/lib/storage";
+import { useSettings } from "@/components/providers/SettingsProvider";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -147,6 +148,7 @@ function WaButton({ link }: { link: string }) {
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function AIChat() {
+  const { whatsappNumber, phoneDisplay } = useSettings();
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState<Step>("idle");
   const [messages, setMessages] = useState<Message[]>([]);
@@ -209,7 +211,7 @@ export default function AIChat() {
           await addBot("What type of event is it?");
         } else if (/no|n\b|nope/i.test(text)) {
           await addBot(
-            "No problem! You can reach us anytime on WhatsApp (+971 55 332 0051) or browse our services at soundboxdubai.com 😊"
+            `No problem! You can reach us anytime on WhatsApp (${phoneDisplay}) or browse our services at soundboxdubai.com 😊`
           );
         } else {
           await addBot(
@@ -362,7 +364,7 @@ export default function AIChat() {
           date: finalData.eventDate,
           guests: finalData.guests,
           services: finalData.services,
-        });
+        }, whatsappNumber);
 
         setTimeout(() => {
           setMessages((prev) => [

@@ -33,10 +33,24 @@ export default async function ServicePage({ params }: Props) {
   if (!service) notFound();
   const settings = await getSiteSettings();
 
+  const breadcrumbSchema = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Home", item: settings.websiteUrl || "https://www.soundboxdubai.com" },
+      { "@type": "ListItem", position: 2, name: "Services", item: `${settings.websiteUrl || "https://www.soundboxdubai.com"}/services` },
+      { "@type": "ListItem", position: 3, name: service.title, item: `${settings.websiteUrl || "https://www.soundboxdubai.com"}/services/${slug}` },
+    ],
+  };
+
   const others = services.filter((s) => s.slug !== slug).slice(0, 4);
 
   return (
     <SiteShell>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }}
+      />
       {/* Hero */}
       <section
         className="relative pt-36 pb-20 overflow-hidden"
