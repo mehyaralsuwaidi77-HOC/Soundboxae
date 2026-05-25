@@ -1,38 +1,35 @@
 import Link from "next/link";
+import Image from "next/image";
 import { ArrowRight } from "lucide-react";
 import SectionHeader from "@/components/ui/SectionHeader";
 
 const categories = [
   {
     label: "Weddings",
-    icon: "💍",
+    image: "/Category%20BG/Wedding%20Setup%20BG.png",
     href: "/services/wedding-setup",
     description: "Elegant AV for the most important day of your life.",
-    gradient: "from-[#1a1209] to-[#111118]",
     accent: "#D6A84F",
   },
   {
     label: "Corporate Events",
-    icon: "🏢",
+    image: "/Category%20BG/Corporate%20Events%20BG.png",
     href: "/services/corporate-events",
     description: "Polished production for conferences, launches & galas.",
-    gradient: "from-[#091220] to-[#111118]",
     accent: "#2F80ED",
   },
   {
     label: "Concerts",
-    icon: "🎸",
+    image: "/Category%20BG/Concert%20Setup%20BG.png",
     href: "/services/concert-setup",
     description: "Full concert infrastructure for live music & festivals.",
-    gradient: "from-[#140919] to-[#111118]",
     accent: "#D6A84F",
   },
   {
     label: "Private Parties",
-    icon: "🎉",
+    image: "/Category%20BG/Event%20Production%20BG.png",
     href: "/services/event-production",
     description: "Premium DJ & AV setups for unforgettable private events.",
-    gradient: "from-[#0d1a0d] to-[#111118]",
     accent: "#D6A84F",
   },
 ];
@@ -65,38 +62,59 @@ export default function FeaturedCategories() {
             <Link
               key={cat.label}
               href={cat.href}
-              className={`group relative overflow-hidden rounded-2xl p-8 flex flex-col gap-5 bg-gradient-to-br ${cat.gradient} border transition-[transform,box-shadow] duration-300 hover:-translate-y-2`}
+              className="group relative overflow-hidden rounded-2xl flex flex-col transition-[transform,box-shadow] duration-300 hover:-translate-y-2"
               style={{
-                borderColor: "rgba(214,168,79,0.1)",
-                boxShadow: "0 4px 24px rgba(0,0,0,0.4)",
+                minHeight: "260px",
+                border: "1px solid rgba(214,168,79,0.12)",
+                boxShadow: "0 4px 24px rgba(0,0,0,0.45)",
               }}
             >
-              {/* Hover glow */}
+              {/* Background image */}
+              <div className="absolute inset-0">
+                <Image
+                  src={cat.image}
+                  alt={cat.label}
+                  fill
+                  className="object-cover transition-[transform] duration-500 group-hover:scale-105"
+                  unoptimized
+                />
+                <div
+                  className="absolute inset-0"
+                  style={{
+                    background: "linear-gradient(to bottom, rgba(5,5,5,0.3), rgba(5,5,5,0.85))",
+                  }}
+                />
+              </div>
+
+              {/* Hover accent glow */}
               <div
                 className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-[opacity] duration-300 rounded-2xl pointer-events-none"
                 style={{
-                  background: `radial-gradient(ellipse at 50% 100%, ${cat.accent}18 0%, transparent 70%)`,
+                  background: `radial-gradient(ellipse at 50% 100%, ${cat.accent}22 0%, transparent 65%)`,
                 }}
               />
 
-              <div>
-                <h3
-                  className="text-xl font-bold mb-2 transition-[color] duration-150 group-hover:text-[#D6A84F]"
-                  style={{ fontFamily: "var(--font-display)" }}
-                >
-                  {cat.label}
-                </h3>
-                <p className="text-sm leading-relaxed" style={{ color: "#A7A7B3" }}>
-                  {cat.description}
-                </p>
-              </div>
+              {/* Content */}
+              <div className="relative z-10 flex flex-col justify-end flex-1 p-7 gap-3">
+                <div>
+                  <h3
+                    className="text-xl font-bold mb-2 transition-[color] duration-150 group-hover:text-[#D6A84F]"
+                    style={{ fontFamily: "var(--font-display)" }}
+                  >
+                    {cat.label}
+                  </h3>
+                  <p className="text-sm leading-relaxed" style={{ color: "rgba(200,200,210,0.85)" }}>
+                    {cat.description}
+                  </p>
+                </div>
 
-              <span
-                className="inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-wider mt-auto"
-                style={{ color: cat.accent }}
-              >
-                Explore <ArrowRight size={12} className="group-hover:translate-x-1 transition-[transform] duration-150" />
-              </span>
+                <span
+                  className="inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-wider mt-1"
+                  style={{ color: cat.accent }}
+                >
+                  Explore <ArrowRight size={12} className="group-hover:translate-x-1 transition-[transform] duration-150" />
+                </span>
+              </div>
             </Link>
           ))}
         </div>

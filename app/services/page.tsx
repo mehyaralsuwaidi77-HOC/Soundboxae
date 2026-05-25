@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import Image from "next/image";
 import { ArrowRight } from "lucide-react";
 import SiteShell from "@/components/layout/SiteShell";
 import SectionHeader from "@/components/ui/SectionHeader";
@@ -76,37 +77,55 @@ export default function ServicesPage() {
                   <Link
                     key={service.slug}
                     href={`/services/${service.slug}`}
-                    className="group glass-card rounded-xl p-7 flex flex-col gap-4 transition-[transform,box-shadow] duration-300 hover:-translate-y-1"
+                    className="group glass-card rounded-xl overflow-hidden flex flex-col transition-[transform,box-shadow] duration-300 hover:-translate-y-1"
                   >
-                    <span className="text-4xl">{service.icon}</span>
-                    <div>
-                      <h3
-                        className="text-xl font-bold mb-2 group-hover:text-[#D6A84F] transition-[color] duration-150"
-                        style={{ fontFamily: "var(--font-display)" }}
-                      >
-                        {service.title}
-                      </h3>
-                      <p className="text-sm leading-relaxed" style={{ color: "#A7A7B3" }}>
-                        {service.description}
-                      </p>
+                    {/* Category BG image */}
+                    <div className="relative aspect-video overflow-hidden shrink-0">
+                      <Image
+                        src={service.bgImage}
+                        alt={service.title}
+                        fill
+                        className="object-cover transition-[transform] duration-500 group-hover:scale-105"
+                        unoptimized
+                      />
+                      <div
+                        className="absolute inset-0"
+                        style={{
+                          background: "linear-gradient(to bottom, rgba(0,0,0,0.05), rgba(11,11,15,0.65))",
+                        }}
+                      />
                     </div>
-                    <div className="flex flex-wrap gap-2 mt-auto">
-                      {service.useCases.slice(0, 3).map((uc) => (
-                        <span
-                          key={uc}
-                          className="text-xs px-2 py-0.5 rounded"
-                          style={{ background: "rgba(214,168,79,0.08)", color: "#D6A84F" }}
+
+                    <div className="p-6 flex flex-col gap-3 flex-1">
+                      <div>
+                        <h3
+                          className="text-xl font-bold mb-2 group-hover:text-[#D6A84F] transition-[color] duration-150"
+                          style={{ fontFamily: "var(--font-display)" }}
                         >
-                          {uc}
-                        </span>
-                      ))}
+                          {service.title}
+                        </h3>
+                        <p className="text-sm leading-relaxed" style={{ color: "#A7A7B3" }}>
+                          {service.description}
+                        </p>
+                      </div>
+                      <div className="flex flex-wrap gap-2 mt-auto">
+                        {service.useCases.slice(0, 3).map((uc) => (
+                          <span
+                            key={uc}
+                            className="text-xs px-2 py-0.5 rounded"
+                            style={{ background: "rgba(214,168,79,0.08)", color: "#D6A84F" }}
+                          >
+                            {uc}
+                          </span>
+                        ))}
+                      </div>
+                      <span
+                        className="inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-wider"
+                        style={{ color: "#D6A84F" }}
+                      >
+                        View details <ArrowRight size={12} />
+                      </span>
                     </div>
-                    <span
-                      className="inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-wider"
-                      style={{ color: "#D6A84F" }}
-                    >
-                      View details <ArrowRight size={12} />
-                    </span>
                   </Link>
                 ))}
               </div>

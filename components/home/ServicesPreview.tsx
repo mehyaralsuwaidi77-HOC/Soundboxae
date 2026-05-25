@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { ArrowRight } from "lucide-react";
 import SectionHeader from "@/components/ui/SectionHeader";
 import { services } from "@/data/services";
@@ -33,28 +34,43 @@ export default function ServicesPreview() {
             <Link
               key={service.slug}
               href={`/services/${service.slug}`}
-              className="group glass-card rounded-xl p-6 flex flex-col gap-4 transition-[transform,box-shadow] duration-300 hover:-translate-y-1"
-              style={{
-                animationDelay: `${i * 0.06}s`,
-              }}
+              className="group glass-card rounded-xl overflow-hidden flex flex-col transition-[transform,box-shadow] duration-300 hover:-translate-y-1"
+              style={{ animationDelay: `${i * 0.06}s` }}
             >
-              <div>
+              {/* Category BG image */}
+              <div className="relative aspect-video overflow-hidden shrink-0">
+                <Image
+                  src={service.bgImage}
+                  alt={service.title}
+                  fill
+                  className="object-cover transition-[transform] duration-500 group-hover:scale-105"
+                  unoptimized
+                />
+                <div
+                  className="absolute inset-0"
+                  style={{
+                    background: "linear-gradient(to bottom, rgba(0,0,0,0.05), rgba(11,11,15,0.55))",
+                  }}
+                />
+              </div>
+
+              <div className="p-5 flex flex-col gap-2 flex-1">
                 <h3
-                  className="text-lg font-semibold mb-1 group-hover:text-[#D6A84F] transition-[color] duration-150"
+                  className="text-base font-semibold group-hover:text-[#D6A84F] transition-[color] duration-150"
                   style={{ fontFamily: "var(--font-display)" }}
                 >
                   {service.title}
                 </h3>
-                <p className="text-sm leading-relaxed line-clamp-3" style={{ color: "#A7A7B3" }}>
+                <p className="text-sm leading-relaxed line-clamp-2" style={{ color: "#A7A7B3" }}>
                   {service.description}
                 </p>
+                <span
+                  className="mt-auto inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-wider opacity-0 group-hover:opacity-100 transition-[opacity] duration-200"
+                  style={{ color: "#D6A84F" }}
+                >
+                  Learn more <ArrowRight size={12} />
+                </span>
               </div>
-              <span
-                className="mt-auto inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-wider opacity-0 group-hover:opacity-100 transition-[opacity] duration-200"
-                style={{ color: "#D6A84F" }}
-              >
-                Learn more <ArrowRight size={12} />
-              </span>
             </Link>
           ))}
         </div>

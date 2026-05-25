@@ -8,6 +8,7 @@ export interface Service {
   features: string[];
   useCases: string[];
   image: string;
+  bgImage: string;
   category: "audio" | "visual" | "staging" | "production";
 }
 
@@ -21,6 +22,7 @@ export const services: Service[] = [
     longDescription:
       "Our premium audio inventory features world-class brands including d&b audiotechnik, L-Acoustics, and QSC. Every system is tuned by our certified audio engineers to deliver pristine sound reproduction. Whether you need a simple two-speaker setup for a boardroom or a full line-array hang for a 5,000-person concert, we have the gear and the expertise.",
     icon: "🔊",
+    bgImage: "/Category%20BG/Audio%20Systems%20BG.png",
     features: [
       "Line array speaker systems",
       "High-power subwoofer stacks",
@@ -43,6 +45,7 @@ export const services: Service[] = [
     longDescription:
       "Our lighting inventory spans the full spectrum of professional event lighting. We stock the latest moving head fixtures, LED wash systems, architectural lighting, and intelligent beam effects. Our lighting designers work with you to craft a look that enhances your event theme and brand.",
     icon: "💡",
+    bgImage: "/Category%20BG/Lighting%20Systems%20BG.png",
     features: [
       "Moving head spot & wash fixtures",
       "LED par cans and wash bars",
@@ -65,6 +68,7 @@ export const services: Service[] = [
     longDescription:
       "Our LED screen inventory includes fine-pitch indoor panels (P2.6 to P4) and high-brightness outdoor tiles (P5 to P10). We handle full installation, configuration, and content playback management. Custom shapes, curved configurations, and ceiling installations are all possible with our versatile modular system.",
     icon: "📺",
+    bgImage: "/Category%20BG/LED%20Screens%20BG.png",
     features: [
       "Indoor fine-pitch LED panels (P2.6–P4)",
       "Outdoor high-brightness LED tiles (P5–P10)",
@@ -87,6 +91,7 @@ export const services: Service[] = [
     longDescription:
       "Our aluminum and steel stage systems are engineered for rapid deployment and absolute structural integrity. From a simple 4×8m presentation riser to a full 30×20m concert stage with covered roof systems, our certified crew handles design, installation, and load calculations to meet UAE safety codes.",
     icon: "🎭",
+    bgImage: "/Category%20BG/Stages%20BG.png",
     features: [
       "Modular aluminum deck systems",
       "Heights from 0.6m to 2m+",
@@ -109,6 +114,7 @@ export const services: Service[] = [
     longDescription:
       "All rigging is executed by IRATA-certified riggers using rated chain hoists, shackles, and structural steelwork. We conduct full load assessments for every venue and provide documentation for venue compliance. From hanging a single chandelier to flying a full production rig with 50+ hoists, our team delivers with precision.",
     icon: "⛓️",
+    bgImage: "/Category%20BG/Rigging%20BG.png",
     features: [
       "Chain hoists (CM, Liftket) — 0.5T to 2T",
       "IRATA-certified rigging crew",
@@ -131,6 +137,7 @@ export const services: Service[] = [
     longDescription:
       "We stock a comprehensive range of box truss, tri-truss, and circle truss in standard lengths and custom configurations. All truss comes with rated connection hardware and is maintained to strict inspection schedules. Our technical team handles structural design and ensures every build complies with load requirements.",
     icon: "🏗️",
+    bgImage: "/Category%20BG/Trusses%20BG.png",
     features: [
       "Box truss (290mm & 390mm)",
       "Tri truss and ladder truss",
@@ -153,6 +160,7 @@ export const services: Service[] = [
     longDescription:
       "Our DJ inventory covers everything professional DJs require: Pioneer CDJ-3000 media players, DJM mixers, Rane Sevens, full DJ booths with built-in monitoring, and lighting controller integration. All equipment is PAT tested and delivered in road cases with complete cabling.",
     icon: "🎧",
+    bgImage: "/Category%20BG/DJ%20Equipment%20BG.png",
     features: [
       "Pioneer CDJ-3000 media players",
       "Pioneer DJM-900NXS2 mixer",
@@ -175,6 +183,7 @@ export const services: Service[] = [
     longDescription:
       "Soundbox provides complete event production services across Dubai and the UAE. Our production team handles technical design, site surveys, crew scheduling, equipment logistics, on-site supervision, and post-event breakdown. We coordinate every element so you can focus on your guests.",
     icon: "🎬",
+    bgImage: "/Category%20BG/Event%20Production%20BG.png",
     features: [
       "Technical event design & CAD drawings",
       "Full equipment supply (audio, visual, staging)",
@@ -197,6 +206,7 @@ export const services: Service[] = [
     longDescription:
       "From intimate 500-person shows to major outdoor concerts, Soundbox delivers the full technical rider. We work directly with artist management and production riders to match technical specifications and deliver an immersive live experience. Our concert packages include all audio, lighting, staging, and rigging elements.",
     icon: "🎸",
+    bgImage: "/Category%20BG/Concert%20Setup%20BG.png",
     features: [
       "Main PA & delay speaker systems",
       "Monitor world and IEM systems",
@@ -219,6 +229,7 @@ export const services: Service[] = [
     longDescription:
       "Your wedding deserves perfection. Our wedding AV team specializes in creating intimate, romantic, and opulent atmospheres that complement your venue and theme. From subtle uplighting in gold and white to dramatic entrance reveals with synchronized lighting and sound, every detail is choreographed.",
     icon: "💍",
+    bgImage: "/Category%20BG/Wedding%20Setup%20BG.png",
     features: [
       "Ceremony & reception audio systems",
       "Wireless lavalier microphones",
@@ -241,6 +252,7 @@ export const services: Service[] = [
     longDescription:
       "Soundbox understands corporate requirements: reliable equipment, professional crew, and seamless execution. We provide clear presentation audio, bright projection or LED screens, confident room acoustics, and branded lighting environments. Our team is experienced in working with Fortune 500 companies and UAE government entities.",
     icon: "🏢",
+    bgImage: "/Category%20BG/Corporate%20Events%20BG.png",
     features: [
       "Conference audio and presentation systems",
       "Large-format LED screens and projectors",

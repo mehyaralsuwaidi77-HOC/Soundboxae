@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { CheckCircle, MessageCircle, ArrowLeft } from "lucide-react";
 import SiteShell from "@/components/layout/SiteShell";
-import GoldBadge from "@/components/ui/GoldBadge";
 import { services, getServiceBySlug } from "@/data/services";
 import { whatsappInquiry } from "@/lib/whatsapp";
 
@@ -39,6 +39,25 @@ export default async function ServicePage({ params }: Props) {
         className="relative pt-36 pb-20 overflow-hidden"
         style={{ background: "#050505" }}
       >
+        {/* Category BG image as hero background */}
+        <div className="absolute inset-0">
+          <Image
+            src={service.bgImage}
+            alt=""
+            fill
+            className="object-cover opacity-25"
+            unoptimized
+            priority
+          />
+          <div
+            className="absolute inset-0"
+            style={{
+              background: "linear-gradient(to bottom, rgba(5,5,5,0.55), rgba(5,5,5,0.92))",
+            }}
+          />
+        </div>
+
+        {/* Glow overlay */}
         <div
           className="absolute inset-0 pointer-events-none"
           style={{
@@ -46,6 +65,7 @@ export default async function ServicePage({ params }: Props) {
               "radial-gradient(ellipse 60% 50% at 30% 0%, rgba(214,168,79,0.1) 0%, transparent 60%)",
           }}
         />
+
         <div className="relative max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
           <Link
             href="/services"
@@ -54,33 +74,30 @@ export default async function ServicePage({ params }: Props) {
           >
             <ArrowLeft size={14} /> Back to Services
           </Link>
-          <GoldBadge className="mb-4">{service.category}</GoldBadge>
-          <div className="flex items-start gap-6">
-            <span className="text-5xl shrink-0">{service.icon}</span>
-            <div>
-              <h1
-                className="text-4xl md:text-5xl lg:text-6xl font-bold mb-4"
-                style={{ fontFamily: "var(--font-display)", letterSpacing: "-0.02em" }}
+
+          <div>
+            <h1
+              className="text-4xl md:text-5xl lg:text-6xl font-bold mb-4"
+              style={{ fontFamily: "var(--font-display)", letterSpacing: "-0.02em" }}
+            >
+              {service.title}
+            </h1>
+            <p className="text-xl leading-relaxed mb-8" style={{ color: "#A7A7B3" }}>
+              {service.subtitle}
+            </p>
+            <div className="flex flex-wrap gap-3">
+              <a
+                href={whatsappInquiry(service.title)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn-gold inline-flex items-center gap-2"
               >
-                {service.title}
-              </h1>
-              <p className="text-xl leading-relaxed mb-8" style={{ color: "#A7A7B3" }}>
-                {service.subtitle}
-              </p>
-              <div className="flex flex-wrap gap-3">
-                <a
-                  href={whatsappInquiry(service.title)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="btn-gold inline-flex items-center gap-2"
-                >
-                  <MessageCircle size={15} />
-                  Inquire Now
-                </a>
-                <Link href="/products" className="btn-ghost">
-                  Browse Equipment
-                </Link>
-              </div>
+                <MessageCircle size={15} />
+                Inquire Now
+              </a>
+              <Link href="/products" className="btn-ghost">
+                Browse Equipment
+              </Link>
             </div>
           </div>
         </div>
@@ -120,12 +137,19 @@ export default async function ServicePage({ params }: Props) {
               </ul>
             </div>
 
-            {/* Placeholder image */}
-            <div
-              className="rounded-xl aspect-video flex items-center justify-center overflow-hidden"
-              style={{ background: "#111118", border: "1px solid rgba(214,168,79,0.1)" }}
-            >
-              <span className="text-6xl">{service.icon}</span>
+            {/* Category BG image */}
+            <div className="rounded-xl aspect-video overflow-hidden relative">
+              <Image
+                src={service.bgImage}
+                alt={service.title}
+                fill
+                className="object-cover"
+                unoptimized
+              />
+              <div
+                className="absolute inset-0"
+                style={{ background: "rgba(0,0,0,0.15)" }}
+              />
             </div>
           </div>
 
@@ -196,15 +220,29 @@ export default async function ServicePage({ params }: Props) {
               <Link
                 key={s.slug}
                 href={`/services/${s.slug}`}
-                className="group glass-card rounded-xl p-5 flex flex-col gap-3 transition-[transform] duration-200 hover:-translate-y-1"
+                className="group glass-card rounded-xl overflow-hidden flex flex-col transition-[transform] duration-200 hover:-translate-y-1"
               >
-                <span className="text-2xl">{s.icon}</span>
-                <p
-                  className="text-sm font-semibold group-hover:text-[#D6A84F] transition-[color] duration-150"
-                  style={{ fontFamily: "var(--font-display)" }}
-                >
-                  {s.title}
-                </p>
+                <div className="relative aspect-video overflow-hidden">
+                  <Image
+                    src={s.bgImage}
+                    alt={s.title}
+                    fill
+                    className="object-cover transition-[transform] duration-500 group-hover:scale-105"
+                    unoptimized
+                  />
+                  <div
+                    className="absolute inset-0"
+                    style={{ background: "rgba(0,0,0,0.3)" }}
+                  />
+                </div>
+                <div className="p-4">
+                  <p
+                    className="text-sm font-semibold group-hover:text-[#D6A84F] transition-[color] duration-150"
+                    style={{ fontFamily: "var(--font-display)" }}
+                  >
+                    {s.title}
+                  </p>
+                </div>
               </Link>
             ))}
           </div>
