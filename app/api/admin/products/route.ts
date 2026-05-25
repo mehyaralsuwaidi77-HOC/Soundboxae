@@ -11,11 +11,14 @@ export async function GET() {
       .from("products")
       .select("*")
       .order("sort_order", { ascending: true });
-    if (error) throw error;
+    if (error) {
+      console.error("[GET /api/admin/products] DB error:", error);
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
     return NextResponse.json({ data });
-  } catch (err) {
+  } catch (err: unknown) {
     console.error("[GET /api/admin/products]", err);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return NextResponse.json({ error: err instanceof Error ? err.message : "Internal server error" }, { status: 500 });
   }
 }
 
@@ -31,11 +34,14 @@ export async function POST(req: NextRequest) {
       .insert(body)
       .select()
       .single();
-    if (error) throw error;
+    if (error) {
+      console.error("[POST /api/admin/products] DB error:", error);
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
     return NextResponse.json({ data });
-  } catch (err) {
+  } catch (err: unknown) {
     console.error("[POST /api/admin/products]", err);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return NextResponse.json({ error: err instanceof Error ? err.message : "Internal server error" }, { status: 500 });
   }
 }
 
@@ -54,11 +60,14 @@ export async function PUT(req: NextRequest) {
       .eq("id", id)
       .select()
       .single();
-    if (error) throw error;
+    if (error) {
+      console.error("[PUT /api/admin/products] DB error:", error);
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
     return NextResponse.json({ data });
-  } catch (err) {
+  } catch (err: unknown) {
     console.error("[PUT /api/admin/products]", err);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return NextResponse.json({ error: err instanceof Error ? err.message : "Internal server error" }, { status: 500 });
   }
 }
 
@@ -71,10 +80,13 @@ export async function DELETE(req: NextRequest) {
     if (!id) return NextResponse.json({ error: "id required" }, { status: 400 });
     const db = await serverSupabase();
     const { error } = await db.from("products").delete().eq("id", id);
-    if (error) throw error;
+    if (error) {
+      console.error("[DELETE /api/admin/products] DB error:", error);
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
     return NextResponse.json({ success: true });
-  } catch (err) {
+  } catch (err: unknown) {
     console.error("[DELETE /api/admin/products]", err);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return NextResponse.json({ error: err instanceof Error ? err.message : "Internal server error" }, { status: 500 });
   }
 }

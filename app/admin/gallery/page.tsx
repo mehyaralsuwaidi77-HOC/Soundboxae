@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import Image from "next/image";
-import { Plus, Trash2, Eye, EyeOff, Upload, RefreshCw } from "lucide-react";
+import { Plus, Trash2, Eye, EyeOff, Upload, RefreshCw, Link as LinkIcon } from "lucide-react";
 import { galleryItems as defaultItems, galleryCategories } from "@/data/gallery";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase/client";
 import {
@@ -12,9 +12,13 @@ import {
 import type { DbGalleryItem } from "@/lib/supabase/types";
 
 const emptyForm = {
-  title: "", category: "corporate", image: "", location: "",
+  title: "", category: "corporate", image: "", storagePath: "", location: "",
   year: new Date().getFullYear(), tags: "", featured: false, visible: true,
   altText: "", caption: "",
+};
+
+const emptyIgForm = {
+  imageUrl: "", permalink: "", caption: "", category: "corporate", eventDate: "",
 };
 
 type DisplayItem = {
@@ -45,11 +49,15 @@ function lsToDisplay(item: GalleryItem): DisplayItem {
 }
 
 export default function AdminGalleryPage() {
-  const [items, setItems]       = useState<DisplayItem[]>([]);
-  const [showForm, setShowForm] = useState(false);
-  const [form, setForm]         = useState(emptyForm);
+  const [items, setItems]         = useState<DisplayItem[]>([]);
+  const [showForm, setShowForm]   = useState(false);
+  const [showIgForm, setShowIgForm] = useState(false);
+  const [form, setForm]           = useState(emptyForm);
+  const [igForm, setIgForm]       = useState(emptyIgForm);
   const [uploading, setUploading] = useState(false);
-  const [loading, setLoading]   = useState(true);
+  const [igLoading, setIgLoading] = useState(false);
+  const [igError, setIgError]     = useState<string | null>(null);
+  const [loading, setLoading]     = useState(true);
   const fileRef = useRef<HTMLInputElement>(null);
 
   async function load() {
@@ -84,15 +92,16 @@ export default function AdminGalleryPage() {
 
   useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  async function handleUpload(file: File): Promise<string | null> {
+  async function handleUpload(file: File): Promise<{ url: string; path: string } | null> {
     const ext = file.name.split(".").pop();
-    const path = `gallery/${Date.now()}.${ext}`;
+    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+    const path = `gallery/${Date.now()}_${safeName}`;
     const { error } = await supabase.storage.from("gallery").upload(path, file, {
       contentType: file.type, upsert: false,
     });
     if (error) { alert(`Upload failed: ${error.message}`); return null; }
     const { data: { publicUrl } } = supabase.storage.from("gallery").getPublicUrl(path);
-    return publicUrl;
+    return { url: publicUrl, path };
   }
 
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -100,12 +109,41 @@ export default function AdminGalleryPage() {
     if (!file) return;
     setUploading(true);
     if (isSupabaseConfigured) {
-      const url = await handleUpload(file);
-      if (url) setForm((f) => ({ ...f, image: url }));
+      const result = await handleUpload(file);
+      if (result) setForm((f) => ({ ...f, image: result.url, storagePath: result.path }));
     } else {
       setForm((f) => ({ ...f, image: URL.createObjectURL(file) }));
     }
     setUploading(false);
+  }
+
+  async function handleIgImport() {
+    if (!igForm.imageUrl) return;
+    setIgLoading(true);
+    setIgError(null);
+    try {
+      const res = await fetch("/api/admin/instagram", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          image_url: igForm.imageUrl,
+          caption: igForm.caption || null,
+          category: igForm.category,
+          instagram_permalink: igForm.permalink || null,
+          event_date: igForm.eventDate || null,
+          source: "instagram_manual",
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? "Import failed");
+      await load();
+      setIgForm(emptyIgForm);
+      setShowIgForm(false);
+    } catch (e: unknown) {
+      setIgError(e instanceof Error ? e.message : "Import failed");
+    } finally {
+      setIgLoading(false);
+    }
   }
 
   async function handleAdd() {
@@ -119,11 +157,13 @@ export default function AdminGalleryPage() {
       await supabase.from("gallery_items").insert({
         title: form.title,
         image_url: form.image,
+        storage_path: form.storagePath || null,
         caption: form.caption || null,
         alt_text: form.altText || form.title,
         is_featured: form.featured,
         is_visible: form.visible,
         section_id: (section as { id: string } | null)?.id ?? null,
+        source: "admin",
         metadata: {
           location: form.location,
           year: form.year,
@@ -177,9 +217,107 @@ export default function AdminGalleryPage() {
         </div>
         <div className="flex gap-3">
           <button onClick={load} className="p-2 rounded-lg glass-card" style={{ color: "#D6A84F" }}><RefreshCw size={15} /></button>
-          <button onClick={() => setShowForm(!showForm)} className="btn-gold inline-flex items-center gap-2"><Plus size={15} /> Add Photo</button>
+          <button
+            onClick={() => { setShowIgForm(!showIgForm); setShowForm(false); }}
+            className="px-3 py-2 rounded-lg text-sm font-medium inline-flex items-center gap-2 border transition-[background] duration-150"
+            style={{ borderColor: "rgba(214,168,79,0.3)", color: "#D6A84F", background: showIgForm ? "rgba(214,168,79,0.12)" : "transparent" }}
+          >
+            <LinkIcon size={14} /> Instagram
+          </button>
+          <button onClick={() => { setShowForm(!showForm); setShowIgForm(false); }} className="btn-gold inline-flex items-center gap-2"><Plus size={15} /> Add Photo</button>
         </div>
       </div>
+
+      {/* Instagram manual import form */}
+      {showIgForm && (
+        <div className="glass-card rounded-xl p-6 space-y-4" style={{ border: "1px solid rgba(214,168,79,0.2)" }}>
+          <div className="flex items-center gap-2">
+            <LinkIcon size={15} style={{ color: "#D6A84F" }} />
+            <h3 className="font-bold" style={{ fontFamily: "var(--font-display)" }}>Import Instagram Post</h3>
+            <span className="ml-auto text-xs px-2 py-0.5 rounded-full" style={{ background: "rgba(242,153,74,0.12)", color: "#F2994A" }}>Manual — paste image URL</span>
+          </div>
+          <p className="text-xs" style={{ color: "#5A5A6E" }}>
+            Copy the image URL from Instagram (open post → right-click image → Copy image address) and paste it below.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="sm:col-span-2">
+              <label className="block text-xs mb-1" style={{ color: "#A7A7B3" }}>Image URL *</label>
+              <input
+                type="url"
+                value={igForm.imageUrl}
+                onChange={(e) => setIgForm({ ...igForm, imageUrl: e.target.value })}
+                placeholder="https://instagram.com/… or CDN URL"
+                className="w-full bg-[#181824] rounded-lg px-3 py-2 text-sm border outline-none"
+                style={{ color: "#FFF", borderColor: "rgba(214,168,79,0.2)" }}
+              />
+              {igForm.imageUrl && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={igForm.imageUrl} alt="preview" className="mt-2 h-20 rounded object-cover" />
+              )}
+            </div>
+            <div className="sm:col-span-2">
+              <label className="block text-xs mb-1" style={{ color: "#A7A7B3" }}>Instagram Post URL (permalink)</label>
+              <input
+                type="url"
+                value={igForm.permalink}
+                onChange={(e) => setIgForm({ ...igForm, permalink: e.target.value })}
+                placeholder="https://www.instagram.com/p/ABC123/"
+                className="w-full bg-[#181824] rounded-lg px-3 py-2 text-sm border outline-none"
+                style={{ color: "#FFF", borderColor: "rgba(214,168,79,0.2)" }}
+              />
+            </div>
+            <div className="sm:col-span-2">
+              <label className="block text-xs mb-1" style={{ color: "#A7A7B3" }}>Caption</label>
+              <input
+                type="text"
+                value={igForm.caption}
+                onChange={(e) => setIgForm({ ...igForm, caption: e.target.value })}
+                placeholder="Event description from Instagram…"
+                className="w-full bg-[#181824] rounded-lg px-3 py-2 text-sm border outline-none"
+                style={{ color: "#FFF", borderColor: "rgba(214,168,79,0.2)" }}
+              />
+            </div>
+            <div>
+              <label className="block text-xs mb-1" style={{ color: "#A7A7B3" }}>Category</label>
+              <select
+                value={igForm.category}
+                onChange={(e) => setIgForm({ ...igForm, category: e.target.value })}
+                className="w-full bg-[#181824] rounded-lg px-3 py-2 text-sm border outline-none"
+                style={{ color: "#FFF", borderColor: "rgba(214,168,79,0.2)" }}
+              >
+                {galleryCategories.filter((c) => c.value !== "all").map((c) => (
+                  <option key={c.value} value={c.value}>{c.label}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs mb-1" style={{ color: "#A7A7B3" }}>Event Date</label>
+              <input
+                type="date"
+                value={igForm.eventDate}
+                onChange={(e) => setIgForm({ ...igForm, eventDate: e.target.value })}
+                className="w-full bg-[#181824] rounded-lg px-3 py-2 text-sm border outline-none"
+                style={{ color: "#FFF", borderColor: "rgba(214,168,79,0.2)" }}
+              />
+            </div>
+          </div>
+          {igError && (
+            <p className="text-xs px-3 py-2 rounded-lg" style={{ background: "rgba(235,87,87,0.1)", color: "#EB5757", border: "1px solid rgba(235,87,87,0.2)" }}>
+              {igError}
+            </p>
+          )}
+          <div className="flex gap-3">
+            <button
+              onClick={handleIgImport}
+              disabled={igLoading || !igForm.imageUrl}
+              className="btn-gold disabled:opacity-60 inline-flex items-center gap-2"
+            >
+              {igLoading ? "Importing…" : <><LinkIcon size={13} /> Import Post</>}
+            </button>
+            <button onClick={() => { setShowIgForm(false); setIgError(null); setIgForm(emptyIgForm); }} className="btn-ghost">Cancel</button>
+          </div>
+        </div>
+      )}
 
       {showForm && (
         <div className="glass-card rounded-xl p-6 space-y-4">

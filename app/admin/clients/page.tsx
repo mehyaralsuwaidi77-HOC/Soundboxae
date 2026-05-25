@@ -6,7 +6,7 @@ import { Plus, Trash2, Eye, EyeOff, Upload, RefreshCw, ExternalLink } from "luci
 import { supabase, isSupabaseConfigured } from "@/lib/supabase/client";
 import type { DbClientLogo } from "@/lib/supabase/types";
 
-const emptyForm = { clientName: "", logoUrl: "", websiteUrl: "", visible: true };
+const emptyForm = { clientName: "", logoUrl: "", storagePath: "", websiteUrl: "", visible: true };
 
 export default function AdminClientsPage() {
   const [clients, setClients]   = useState<DbClientLogo[]>([]);
@@ -31,23 +31,24 @@ export default function AdminClientsPage() {
 
   useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  async function handleUpload(file: File): Promise<string | null> {
+  async function handleUpload(file: File): Promise<{ url: string; path: string } | null> {
     const ext = file.name.split(".").pop();
-    const path = `logos/${Date.now()}.${ext}`;
+    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+    const path = `logos/${Date.now()}_${safeName}`;
     const { error } = await supabase.storage.from("client-logos").upload(path, file, {
       contentType: file.type, upsert: false,
     });
     if (error) { alert(`Upload failed: ${error.message}`); return null; }
     const { data: { publicUrl } } = supabase.storage.from("client-logos").getPublicUrl(path);
-    return publicUrl;
+    return { url: publicUrl, path };
   }
 
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file || !isSupabaseConfigured) return;
     setUploading(true);
-    const url = await handleUpload(file);
-    if (url) setForm((f) => ({ ...f, logoUrl: url }));
+    const result = await handleUpload(file);
+    if (result) setForm((f) => ({ ...f, logoUrl: result.url, storagePath: result.path }));
     setUploading(false);
   }
 
@@ -56,6 +57,7 @@ export default function AdminClientsPage() {
     await supabase.from("client_logos").insert({
       client_name: form.clientName,
       logo_url: form.logoUrl,
+      storage_path: form.storagePath || null,
       website_url: form.websiteUrl || null,
       is_visible: form.visible,
       sort_order: clients.length,

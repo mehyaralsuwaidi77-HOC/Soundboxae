@@ -129,6 +129,14 @@ export interface DbGalleryItem {
   metadata?: Record<string, unknown>;
   created_at: string;
   updated_at: string;
+  // Instagram / multi-source import fields (added by migration 002)
+  category?: string;
+  source?: string;
+  source_url?: string;
+  instagram_media_id?: string;
+  instagram_permalink?: string;
+  media_type?: string;
+  imported_at?: string;
   section?: DbGallerySection;
 }
 

@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import Image from "next/image";
 import {
   LayoutDashboard, Users, CalendarCheck, ImageIcon,
-  BarChart3, Settings, Image as ImageLogo, LogOut, Menu, Lock, Package,
+  BarChart3, Settings, Image as ImageLogo, LogOut, Menu, Lock, Package, Activity,
 } from "lucide-react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase/client";
 
@@ -20,8 +20,9 @@ const navItems = [
   { label: "Products",  href: "/admin/products",  icon: <Package size={17} /> },
   { label: "Gallery",   href: "/admin/gallery",   icon: <ImageIcon size={17} /> },
   { label: "Clients",   href: "/admin/clients",   icon: <ImageLogo size={17} /> },
-  { label: "Analytics", href: "/admin/analytics", icon: <BarChart3 size={17} /> },
-  { label: "Settings",  href: "/admin/settings",  icon: <Settings size={17} /> },
+  { label: "Analytics",     href: "/admin/analytics",     icon: <BarChart3 size={17} /> },
+  { label: "Settings",      href: "/admin/settings",      icon: <Settings size={17} /> },
+  { label: "System Health", href: "/admin/system-health", icon: <Activity size={17} /> },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
