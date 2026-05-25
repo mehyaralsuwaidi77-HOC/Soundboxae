@@ -80,18 +80,20 @@ export default function ServicesPage() {
                     className="group glass-card rounded-xl overflow-hidden flex flex-col transition-[transform,box-shadow] duration-300 hover:-translate-y-1"
                   >
                     {/* Category BG image */}
-                    <div className="relative aspect-video overflow-hidden shrink-0">
+                    <div className="relative overflow-hidden shrink-0" style={{ aspectRatio: "16/9" }}>
                       <Image
                         src={service.bgImage}
-                        alt={service.title}
+                        alt={`${service.title} — Soundbox Dubai`}
                         fill
+                        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
                         className="object-cover transition-[transform] duration-500 group-hover:scale-105"
+                        style={{ transform: "scale(1.02)" }}
                         unoptimized
                       />
                       <div
                         className="absolute inset-0"
                         style={{
-                          background: "linear-gradient(to bottom, rgba(0,0,0,0.05), rgba(11,11,15,0.65))",
+                          background: "linear-gradient(to bottom, rgba(5,5,5,0) 40%, rgba(11,11,15,0.7) 100%)",
                         }}
                       />
                     </div>

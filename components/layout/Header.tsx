@@ -27,6 +27,8 @@ const navLinks = [
   { label: "Products", href: "/products" },
   { label: "Gallery", href: "/gallery" },
   { label: "Clients", href: "/clients" },
+  { label: "About", href: "/about-us" },
+  { label: "FAQ", href: "/faq" },
   { label: "Track Booking", href: "/track" },
 ];
 

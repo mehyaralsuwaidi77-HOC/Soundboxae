@@ -37,19 +37,30 @@ export default function ServicesPreview() {
               className="group glass-card rounded-xl overflow-hidden flex flex-col transition-[transform,box-shadow] duration-300 hover:-translate-y-1"
               style={{ animationDelay: `${i * 0.06}s` }}
             >
-              {/* Category BG image */}
-              <div className="relative aspect-video overflow-hidden shrink-0">
+              {/* Image */}
+              <div className="relative overflow-hidden shrink-0" style={{ aspectRatio: "16/10" }}>
                 <Image
                   src={service.bgImage}
-                  alt={service.title}
+                  alt={`${service.title} — Soundbox Dubai`}
                   fill
-                  className="object-cover transition-[transform] duration-500 group-hover:scale-105"
+                  sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+                  className="object-cover transition-[transform] duration-500 group-hover:scale-108"
+                  style={{ transform: "scale(1.02)" }}
                   unoptimized
+                  priority={i < 4}
                 />
+                {/* Multi-layer overlay for depth */}
                 <div
                   className="absolute inset-0"
                   style={{
-                    background: "linear-gradient(to bottom, rgba(0,0,0,0.05), rgba(11,11,15,0.55))",
+                    background:
+                      "linear-gradient(to bottom, rgba(5,5,5,0) 30%, rgba(11,11,15,0.75) 100%)",
+                  }}
+                />
+                <div
+                  className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-[opacity] duration-400"
+                  style={{
+                    background: "rgba(214,168,79,0.06)",
                   }}
                 />
               </div>

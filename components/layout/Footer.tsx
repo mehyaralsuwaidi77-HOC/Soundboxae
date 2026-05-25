@@ -20,6 +20,8 @@ const quickLinks = [
   { label: "Products & Bundles", href: "/products" },
   { label: "Gallery", href: "/gallery" },
   { label: "Our Clients", href: "/clients" },
+  { label: "About Us", href: "/about-us" },
+  { label: "FAQ", href: "/faq" },
   { label: "Track Your Booking", href: "/tracking" },
   { label: "Admin", href: "/admin" },
 ];

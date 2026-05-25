@@ -58,13 +58,13 @@ export default function FeaturedCategories() {
         />
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-          {categories.map((cat) => (
+          {categories.map((cat, i) => (
             <Link
               key={cat.label}
               href={cat.href}
               className="group relative overflow-hidden rounded-2xl flex flex-col transition-[transform,box-shadow] duration-300 hover:-translate-y-2"
               style={{
-                minHeight: "260px",
+                minHeight: "280px",
                 border: "1px solid rgba(214,168,79,0.12)",
                 boxShadow: "0 4px 24px rgba(0,0,0,0.45)",
               }}
@@ -73,15 +73,28 @@ export default function FeaturedCategories() {
               <div className="absolute inset-0">
                 <Image
                   src={cat.image}
-                  alt={cat.label}
+                  alt={`${cat.label} AV Setup — Soundbox Dubai`}
                   fill
-                  className="object-cover transition-[transform] duration-500 group-hover:scale-105"
+                  sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+                  className="object-cover transition-[transform] duration-600 group-hover:scale-105"
+                  style={{ transform: "scale(1.02)" }}
                   unoptimized
+                  priority={i < 2}
                 />
+                {/* Base dark overlay — ensures readability */}
                 <div
                   className="absolute inset-0"
                   style={{
-                    background: "linear-gradient(to bottom, rgba(5,5,5,0.3), rgba(5,5,5,0.85))",
+                    background: "linear-gradient(to bottom, rgba(5,5,5,0.25) 0%, rgba(5,5,5,0.82) 100%)",
+                  }}
+                />
+                {/* Texture grain */}
+                <div
+                  className="absolute inset-0 opacity-[0.03]"
+                  style={{
+                    backgroundImage:
+                      "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E\")",
+                    backgroundSize: "128px 128px",
                   }}
                 />
               </div>
@@ -90,7 +103,7 @@ export default function FeaturedCategories() {
               <div
                 className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-[opacity] duration-300 rounded-2xl pointer-events-none"
                 style={{
-                  background: `radial-gradient(ellipse at 50% 100%, ${cat.accent}22 0%, transparent 65%)`,
+                  background: `radial-gradient(ellipse at 50% 110%, ${cat.accent}28 0%, transparent 65%)`,
                 }}
               />
 
@@ -99,11 +112,14 @@ export default function FeaturedCategories() {
                 <div>
                   <h3
                     className="text-xl font-bold mb-2 transition-[color] duration-150 group-hover:text-[#D6A84F]"
-                    style={{ fontFamily: "var(--font-display)" }}
+                    style={{ fontFamily: "var(--font-display)", textShadow: "0 2px 8px rgba(0,0,0,0.6)" }}
                   >
                     {cat.label}
                   </h3>
-                  <p className="text-sm leading-relaxed" style={{ color: "rgba(200,200,210,0.85)" }}>
+                  <p
+                    className="text-sm leading-relaxed"
+                    style={{ color: "rgba(210,210,220,0.9)", textShadow: "0 1px 4px rgba(0,0,0,0.5)" }}
+                  >
                     {cat.description}
                   </p>
                 </div>
@@ -112,7 +128,11 @@ export default function FeaturedCategories() {
                   className="inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-wider mt-1"
                   style={{ color: cat.accent }}
                 >
-                  Explore <ArrowRight size={12} className="group-hover:translate-x-1 transition-[transform] duration-150" />
+                  Explore{" "}
+                  <ArrowRight
+                    size={12}
+                    className="group-hover:translate-x-1 transition-[transform] duration-150"
+                  />
                 </span>
               </div>
             </Link>
