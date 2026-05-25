@@ -161,6 +161,15 @@ h1, h2, h3, h4, h5, h6 {
   opacity: 0.035;
 }
 
+/* ─── Nav dropdown item ─────────────────────────────────────────────────────── */
+.nav-dropdown-item {
+  color: #A7A7B8;
+}
+.nav-dropdown-item:hover {
+  background: rgba(214,168,79,0.08);
+  color: #FFFFFF;
+}
+
 /* ─── Client logo card ───────────────────────────────────────────────────────── */
 .client-logo-card {
   background: rgba(17, 17, 24, 0.8);

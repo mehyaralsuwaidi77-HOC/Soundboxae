@@ -1,42 +1,58 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Trash2 } from "lucide-react";
 import {
   getBookings,
   saveBooking,
   updateBookingStatus,
   updatePaymentStatus,
+  deleteBooking,
   type Booking,
+  type BookingStatus,
+  BOOKING_STATUS_LABELS,
+  PAYMENT_STATUS_LABELS,
 } from "@/lib/storage";
 
-const STATUS_OPTIONS: Booking["status"][] = [
-  "pending",
+const STATUS_OPTIONS: BookingStatus[] = [
+  "new-inquiry",
+  "quotation-sent",
+  "awaiting-payment",
   "confirmed",
-  "in-progress",
+  "preparing-equipment",
+  "team-on-the-way",
+  "setup-in-progress",
   "completed",
   "cancelled",
 ];
-const PAYMENT_OPTIONS: Booking["paymentStatus"][] = [
-  "unpaid",
-  "deposit",
-  "partial",
-  "paid",
-];
 
-const statusColors: Record<Booking["status"], string> = {
-  pending: "#F2994A",
-  confirmed: "#D6A84F",
-  "in-progress": "#2F80ED",
-  completed: "#27AE60",
-  cancelled: "#EB5757",
+const PAYMENT_OPTIONS: Booking["paymentStatus"][] = ["unpaid", "deposit", "partial", "paid"];
+
+const STATUS_COLORS: Record<BookingStatus, string> = {
+  "new-inquiry":         "#F2994A",
+  "quotation-sent":      "#2F80ED",
+  "awaiting-payment":    "#F2C94C",
+  "confirmed":           "#D6A84F",
+  "preparing-equipment": "#9B51E0",
+  "team-on-the-way":     "#56CCF2",
+  "setup-in-progress":   "#27AE60",
+  "completed":           "#219653",
+  "cancelled":           "#EB5757",
 };
 
-const paymentColors: Record<Booking["paymentStatus"], string> = {
-  unpaid: "#EB5757",
+const PAYMENT_COLORS: Record<Booking["paymentStatus"], string> = {
+  unpaid:  "#EB5757",
   deposit: "#F2994A",
   partial: "#F2C94C",
-  paid: "#27AE60",
+  paid:    "#27AE60",
 };
+
+function statusColor(s: string) {
+  return STATUS_COLORS[s as BookingStatus] ?? "#A7A7B3";
+}
+function statusLabel(s: string) {
+  return BOOKING_STATUS_LABELS[s as BookingStatus] ?? s;
+}
 
 const emptyForm = {
   clientName: "",
@@ -54,9 +70,7 @@ export default function BookingsPage() {
   const [form, setForm] = useState(emptyForm);
   const [creating, setCreating] = useState(false);
 
-  useEffect(() => {
-    setBookings(getBookings());
-  }, []);
+  useEffect(() => { setBookings(getBookings()); }, []);
 
   function handleCreate() {
     if (!form.clientName || !form.eventDate) return;
@@ -69,7 +83,7 @@ export default function BookingsPage() {
       eventDate: form.eventDate,
       venue: form.venue,
       services: form.services.split(",").map((s) => s.trim()).filter(Boolean),
-      status: "pending",
+      status: "new-inquiry",
       paymentStatus: "unpaid",
     });
     setBookings(getBookings());
@@ -79,13 +93,19 @@ export default function BookingsPage() {
     alert(`Booking created: ${b.referenceNumber}`);
   }
 
-  function handleStatusChange(id: string, status: Booking["status"]) {
-    updateBookingStatus(id, status, `Status changed to ${status}.`);
+  function handleStatusChange(id: string, status: BookingStatus) {
+    updateBookingStatus(id, status);
     setBookings(getBookings());
   }
 
   function handlePaymentChange(id: string, paymentStatus: Booking["paymentStatus"]) {
     updatePaymentStatus(id, paymentStatus);
+    setBookings(getBookings());
+  }
+
+  function handleDelete(id: string) {
+    if (!confirm("Delete this booking? This cannot be undone.")) return;
+    deleteBooking(id);
     setBookings(getBookings());
   }
 
@@ -97,7 +117,7 @@ export default function BookingsPage() {
             Bookings
           </h1>
           <p className="text-sm" style={{ color: "#A7A7B3" }}>
-            {bookings.length} total bookings
+            {bookings.length} total booking{bookings.length !== 1 ? "s" : ""}
           </p>
         </div>
         <button onClick={() => setShowForm(!showForm)} className="btn-gold">
@@ -113,17 +133,15 @@ export default function BookingsPage() {
           </h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {[
-              { key: "clientName", label: "Client Name *" },
+              { key: "clientName",  label: "Client Name *" },
               { key: "clientEmail", label: "Email" },
               { key: "clientPhone", label: "Phone" },
-              { key: "eventType", label: "Event Type" },
-              { key: "eventDate", label: "Event Date *", type: "date" },
-              { key: "venue", label: "Venue" },
+              { key: "eventType",   label: "Event Type" },
+              { key: "eventDate",   label: "Event Date *", type: "date" },
+              { key: "venue",       label: "Venue" },
             ].map(({ key, label, type }) => (
               <div key={key}>
-                <label className="block text-xs mb-1" style={{ color: "#A7A7B3" }}>
-                  {label}
-                </label>
+                <label className="block text-xs mb-1" style={{ color: "#A7A7B3" }}>{label}</label>
                 <input
                   type={type ?? "text"}
                   value={form[key as keyof typeof form]}
@@ -158,16 +176,18 @@ export default function BookingsPage() {
         </div>
       )}
 
-      {/* Bookings list */}
+      {/* List */}
       {bookings.length === 0 ? (
         <div className="glass-card rounded-xl p-12 text-center">
-          <p style={{ color: "#5A5A6E" }}>No bookings yet. Create a booking above.</p>
+          <p style={{ color: "#5A5A6E" }}>No bookings yet. Create one above.</p>
         </div>
       ) : (
         <div className="space-y-4">
           {bookings.map((booking) => (
             <div key={booking.id} className="glass-card rounded-xl p-6">
               <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+
+                {/* Info */}
                 <div className="flex-1 space-y-2">
                   <div className="flex items-center gap-3 flex-wrap">
                     <p
@@ -179,29 +199,32 @@ export default function BookingsPage() {
                     <span
                       className="text-xs px-2 py-0.5 rounded-full font-semibold"
                       style={{
-                        background: `${statusColors[booking.status]}18`,
-                        color: statusColors[booking.status],
+                        background: `${statusColor(booking.status)}18`,
+                        color: statusColor(booking.status),
                       }}
                     >
-                      {booking.status}
+                      {statusLabel(booking.status)}
                     </span>
                     <span
                       className="text-xs px-2 py-0.5 rounded-full font-semibold"
                       style={{
-                        background: `${paymentColors[booking.paymentStatus]}18`,
-                        color: paymentColors[booking.paymentStatus],
+                        background: `${PAYMENT_COLORS[booking.paymentStatus]}18`,
+                        color: PAYMENT_COLORS[booking.paymentStatus],
                       }}
                     >
-                      {booking.paymentStatus}
+                      {PAYMENT_STATUS_LABELS[booking.paymentStatus]}
                     </span>
                   </div>
+
                   <p className="text-white font-medium">{booking.clientName}</p>
+
                   <div className="grid grid-cols-2 gap-2 text-sm">
                     <span style={{ color: "#A7A7B3" }}>📅 {booking.eventDate}</span>
                     <span style={{ color: "#A7A7B3" }}>📍 {booking.venue}</span>
                     <span style={{ color: "#A7A7B3" }}>📞 {booking.clientPhone}</span>
                     <span style={{ color: "#A7A7B3" }}>✉️ {booking.clientEmail}</span>
                   </div>
+
                   <div className="flex flex-wrap gap-1.5">
                     {booking.services.map((s) => (
                       <span
@@ -215,6 +238,7 @@ export default function BookingsPage() {
                   </div>
                 </div>
 
+                {/* Controls */}
                 <div className="flex flex-col gap-3 md:items-end">
                   <div>
                     <label className="block text-xs mb-1" style={{ color: "#5A5A6E" }}>
@@ -223,15 +247,13 @@ export default function BookingsPage() {
                     <select
                       value={booking.status}
                       onChange={(e) =>
-                        handleStatusChange(booking.id, e.target.value as Booking["status"])
+                        handleStatusChange(booking.id, e.target.value as BookingStatus)
                       }
                       className="rounded-lg px-3 py-2 text-xs border outline-none"
                       style={{ background: "#181824", color: "#FFF", borderColor: "rgba(214,168,79,0.2)" }}
                     >
                       {STATUS_OPTIONS.map((s) => (
-                        <option key={s} value={s}>
-                          {s}
-                        </option>
+                        <option key={s} value={s}>{BOOKING_STATUS_LABELS[s]}</option>
                       ))}
                     </select>
                   </div>
@@ -242,21 +264,23 @@ export default function BookingsPage() {
                     <select
                       value={booking.paymentStatus}
                       onChange={(e) =>
-                        handlePaymentChange(
-                          booking.id,
-                          e.target.value as Booking["paymentStatus"]
-                        )
+                        handlePaymentChange(booking.id, e.target.value as Booking["paymentStatus"])
                       }
                       className="rounded-lg px-3 py-2 text-xs border outline-none"
                       style={{ background: "#181824", color: "#FFF", borderColor: "rgba(214,168,79,0.2)" }}
                     >
                       {PAYMENT_OPTIONS.map((s) => (
-                        <option key={s} value={s}>
-                          {s}
-                        </option>
+                        <option key={s} value={s}>{PAYMENT_STATUS_LABELS[s]}</option>
                       ))}
                     </select>
                   </div>
+                  <button
+                    onClick={() => handleDelete(booking.id)}
+                    className="flex items-center gap-1.5 text-xs transition-[color] duration-150 hover:text-white"
+                    style={{ color: "#EB5757" }}
+                  >
+                    <Trash2 size={12} /> Delete
+                  </button>
                 </div>
               </div>
 
@@ -272,11 +296,8 @@ export default function BookingsPage() {
                         className="w-1.5 h-1.5 rounded-full shrink-0 mt-1"
                         style={{
                           background:
-                            entry.type === "success"
-                              ? "#27AE60"
-                              : entry.type === "warning"
-                              ? "#EB5757"
-                              : "#D6A84F",
+                            entry.type === "success" ? "#27AE60" :
+                            entry.type === "warning" ? "#EB5757" : "#D6A84F",
                         }}
                       />
                       <span style={{ color: "#A7A7B3" }}>{entry.message}</span>

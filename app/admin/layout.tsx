@@ -10,6 +10,7 @@ import {
   CalendarCheck,
   ImageIcon,
   BarChart3,
+  Settings,
   LogOut,
   Menu,
   X,
@@ -19,11 +20,12 @@ import {
 const ADMIN_PASSWORD = process.env.NEXT_PUBLIC_ADMIN_PASSWORD ?? "soundbox2025";
 
 const navItems = [
-  { label: "Dashboard", href: "/admin", icon: <LayoutDashboard size={17} /> },
-  { label: "Leads", href: "/admin/leads", icon: <Users size={17} /> },
-  { label: "Bookings", href: "/admin/bookings", icon: <CalendarCheck size={17} /> },
-  { label: "Gallery", href: "/admin/gallery", icon: <ImageIcon size={17} /> },
+  { label: "Dashboard", href: "/admin",           icon: <LayoutDashboard size={17} /> },
+  { label: "Leads",     href: "/admin/leads",     icon: <Users size={17} /> },
+  { label: "Bookings",  href: "/admin/bookings",  icon: <CalendarCheck size={17} /> },
+  { label: "Gallery",   href: "/admin/gallery",   icon: <ImageIcon size={17} /> },
   { label: "Analytics", href: "/admin/analytics", icon: <BarChart3 size={17} /> },
+  { label: "Settings",  href: "/admin/settings",  icon: <Settings size={17} /> },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {

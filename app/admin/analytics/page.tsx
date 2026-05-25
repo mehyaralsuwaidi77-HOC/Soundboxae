@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getLeads, getBookings } from "@/lib/storage";
+import { getLeads, getBookings, BOOKING_STATUS_LABELS, PAYMENT_STATUS_LABELS, LEAD_STATUS_LABELS } from "@/lib/storage";
 
 export default function AnalyticsPage() {
   const [data, setData] = useState({
@@ -51,7 +51,9 @@ export default function AnalyticsPage() {
     setData({
       totalLeads: leads.length,
       confirmedBookings: bookings.filter((b) => b.status === "confirmed").length,
-      pendingBookings: bookings.filter((b) => b.status === "pending").length,
+      pendingBookings: bookings.filter((b) =>
+        b.status === "new-inquiry" || b.status === "awaiting-payment" || b.status === "quotation-sent"
+      ).length,
       paidBookings: bookings.filter((b) => b.paymentStatus === "paid").length,
       topServices,
       monthlyLeads,
@@ -76,7 +78,7 @@ export default function AnalyticsPage() {
         {[
           { label: "Total Leads", value: data.totalLeads, color: "#D6A84F" },
           { label: "Confirmed Bookings", value: data.confirmedBookings, color: "#27AE60" },
-          { label: "Pending Bookings", value: data.pendingBookings, color: "#F2994A" },
+          { label: "Open Inquiries", value: data.pendingBookings, color: "#F2994A" },
           { label: "Paid in Full", value: data.paidBookings, color: "#2F80ED" },
         ].map((kpi) => (
           <div
@@ -176,10 +178,10 @@ export default function AnalyticsPage() {
               {data.leadsByStatus.map((s) => (
                 <div key={s.status} className="flex items-center justify-between">
                   <span
-                    className="text-sm capitalize px-3 py-1 rounded-full"
+                    className="text-sm px-3 py-1 rounded-full"
                     style={{ background: "rgba(214,168,79,0.1)", color: "#D6A84F" }}
                   >
-                    {s.status}
+                    {LEAD_STATUS_LABELS[s.status as keyof typeof LEAD_STATUS_LABELS] ?? s.status}
                   </span>
                   <span className="text-sm font-semibold text-white">{s.count}</span>
                 </div>

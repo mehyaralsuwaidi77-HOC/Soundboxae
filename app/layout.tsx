@@ -54,6 +54,49 @@ export const metadata: Metadata = {
   },
 };
 
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@type": "LocalBusiness",
+  "@id": "https://www.soundboxdubai.com",
+  name: "Soundbox Electronic Equipment Rental",
+  alternateName: "Soundbox Dubai",
+  description:
+    "Dubai's premier audio visual rental company. Sound systems, LED screens, lighting, stages, rigging, DJ equipment and full event production.",
+  url: "https://www.soundboxdubai.com",
+  telephone: "+971553320051",
+  email: "info@soundboxdubai.com",
+  address: {
+    "@type": "PostalAddress",
+    addressLocality: "Dubai",
+    addressCountry: "AE",
+  },
+  geo: {
+    "@type": "GeoCoordinates",
+    latitude: 25.2048,
+    longitude: 55.2708,
+  },
+  areaServed: [
+    { "@type": "City", name: "Dubai" },
+    { "@type": "City", name: "Abu Dhabi" },
+    { "@type": "Country", name: "United Arab Emirates" },
+  ],
+  hasOfferCatalog: {
+    "@type": "OfferCatalog",
+    name: "AV Equipment Rental Services",
+    itemListElement: [
+      { "@type": "Offer", itemOffered: { "@type": "Service", name: "Audio Systems Rental" } },
+      { "@type": "Offer", itemOffered: { "@type": "Service", name: "Lighting Systems Rental" } },
+      { "@type": "Offer", itemOffered: { "@type": "Service", name: "LED Screen Rental" } },
+      { "@type": "Offer", itemOffered: { "@type": "Service", name: "Stage Rental" } },
+      { "@type": "Offer", itemOffered: { "@type": "Service", name: "DJ Equipment Rental" } },
+      { "@type": "Offer", itemOffered: { "@type": "Service", name: "Event Production" } },
+    ],
+  },
+  sameAs: [
+    "https://wa.me/971553320051",
+  ],
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
@@ -65,6 +108,10 @@ export default function RootLayout({
         <link
           href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;0,900;1,400&family=Inter:wght@300;400;500;600;700&display=swap"
           rel="stylesheet"
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
       </head>
       <body className="min-h-full flex flex-col bg-[#0B0B0F] text-white antialiased">

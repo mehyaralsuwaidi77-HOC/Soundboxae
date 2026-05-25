@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Users, CalendarCheck, TrendingUp, Clock, ArrowRight } from "lucide-react";
-import { getLeads, getBookings } from "@/lib/storage";
+import { getLeads, getBookings, BOOKING_STATUS_LABELS, LEAD_STATUS_LABELS } from "@/lib/storage";
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState({
@@ -25,7 +25,9 @@ export default function AdminDashboard() {
       newLeads: leads.filter((l) => l.status === "new").length,
       totalBookings: bookings.length,
       confirmedBookings: bookings.filter((b) => b.status === "confirmed").length,
-      pendingBookings: bookings.filter((b) => b.status === "pending").length,
+      pendingBookings: bookings.filter((b) =>
+        b.status === "new-inquiry" || b.status === "awaiting-payment" || b.status === "quotation-sent"
+      ).length,
       paidBookings: bookings.filter((b) => b.paymentStatus === "paid").length,
     });
     setRecentLeads(leads.slice(0, 5));
@@ -149,7 +151,7 @@ export default function AdminDashboard() {
                       color: lead.status === "new" ? "#D6A84F" : "#5A5A6E",
                     }}
                   >
-                    {lead.status}
+                    {LEAD_STATUS_LABELS[lead.status] ?? lead.status}
                   </span>
                 </div>
               ))}
@@ -195,7 +197,7 @@ export default function AdminDashboard() {
                       color: "#D6A84F",
                     }}
                   >
-                    {booking.status}
+                    {BOOKING_STATUS_LABELS[booking.status] ?? booking.status}
                   </span>
                 </div>
               ))}

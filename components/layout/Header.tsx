@@ -3,109 +3,140 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { usePathname } from "next/navigation";
 import { Menu, X, ChevronDown } from "lucide-react";
 import { whatsappGeneral } from "@/lib/whatsapp";
 
+const serviceLinks = [
+  { label: "Audio Systems", href: "/services/audio-systems" },
+  { label: "Lighting Systems", href: "/services/lighting-systems" },
+  { label: "LED Screens", href: "/services/led-screens" },
+  { label: "Stages", href: "/services/stages" },
+  { label: "Rigging", href: "/services/rigging" },
+  { label: "Trusses", href: "/services/trusses" },
+  { label: "DJ Equipment", href: "/services/dj-equipment" },
+  { label: "Event Production", href: "/services/event-production" },
+  { label: "Concert Setup", href: "/services/concert-setup" },
+  { label: "Wedding Setup", href: "/services/wedding-setup" },
+  { label: "Corporate Events", href: "/services/corporate-events" },
+];
+
 const navLinks = [
   { label: "Home", href: "/" },
-  {
-    label: "Services",
-    href: "/services",
-    children: [
-      { label: "Audio Systems", href: "/services/audio-systems" },
-      { label: "Lighting Systems", href: "/services/lighting-systems" },
-      { label: "LED Screens", href: "/services/led-screens" },
-      { label: "Stages", href: "/services/stages" },
-      { label: "Rigging", href: "/services/rigging" },
-      { label: "Trusses", href: "/services/trusses" },
-      { label: "DJ Equipment", href: "/services/dj-equipment" },
-      { label: "Event Production", href: "/services/event-production" },
-      { label: "Concert Setup", href: "/services/concert-setup" },
-      { label: "Wedding Setup", href: "/services/wedding-setup" },
-      { label: "Corporate Events", href: "/services/corporate-events" },
-    ],
-  },
+  { label: "Services", href: "/services", children: serviceLinks },
   { label: "Products", href: "/products" },
   { label: "Gallery", href: "/gallery" },
   { label: "Clients", href: "/clients" },
-  { label: "Track Booking", href: "/tracking" },
+  { label: "Track Booking", href: "/track" },
 ];
 
 export default function Header() {
+  const pathname = usePathname();
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [servicesOpen, setServicesOpen] = useState(false);
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 40);
+    const onScroll = () => setScrolled(window.scrollY > 60);
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
+  // Close mobile menu on route change
+  useEffect(() => {
+    setMobileOpen(false);
+    setServicesOpen(false);
+  }, [pathname]);
+
+  function isActive(href: string) {
+    if (href === "/") return pathname === "/";
+    return pathname.startsWith(href);
+  }
+
   return (
     <header
-      className="fixed top-0 left-0 right-0 z-50 transition-[background,box-shadow] duration-300"
+      className="fixed top-0 left-0 right-0 z-50"
       style={{
         background: scrolled
-          ? "rgba(5,5,5,0.95)"
-          : "linear-gradient(to bottom, rgba(5,5,5,0.8), transparent)",
-        backdropFilter: scrolled ? "blur(12px)" : "none",
-        boxShadow: scrolled ? "0 1px 0 rgba(214,168,79,0.15)" : "none",
+          ? "rgba(5,5,5,0.97)"
+          : "linear-gradient(to bottom, rgba(5,5,5,0.85) 0%, rgba(5,5,5,0.4) 60%, transparent 100%)",
+        backdropFilter: scrolled ? "blur(16px) saturate(1.8)" : "none",
+        WebkitBackdropFilter: scrolled ? "blur(16px) saturate(1.8)" : "none",
+        transition: "background 0.35s ease, box-shadow 0.35s ease",
+        boxShadow: scrolled ? "0 1px 0 rgba(214,168,79,0.12), 0 4px 24px rgba(0,0,0,0.4)" : "none",
       }}
     >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-20">
-          {/* Logo */}
-          <Link href="/" className="flex items-center gap-3 shrink-0">
+      <div className="max-w-7xl mx-auto px-5 sm:px-8 lg:px-10">
+        <div className="flex items-center justify-between h-[72px]">
+
+          {/* ── Logo ──────────────────────────────────────────────────────── */}
+          <Link href="/" className="flex items-center shrink-0" aria-label="Soundbox Dubai — Home">
+            {/* Mobile: icon only */}
             <Image
               src="/logos/soundbox-icon.png"
               alt="Soundbox Dubai"
-              width={38}
-              height={38}
-              className="object-contain"
+              width={36}
+              height={36}
+              className="sm:hidden object-contain"
+              priority
             />
+            {/* Desktop/tablet: full logo */}
             <Image
               src="/logos/soundbox-logo.png"
               alt="Soundbox Dubai"
-              width={130}
-              height={36}
-              className="object-contain hidden sm:block"
+              width={148}
+              height={42}
+              className="hidden sm:block object-contain"
+              priority
             />
           </Link>
 
-          {/* Desktop nav */}
-          <nav className="hidden lg:flex items-center gap-1">
+          {/* ── Desktop nav ───────────────────────────────────────────────── */}
+          <nav className="hidden lg:flex items-center gap-0.5" aria-label="Main navigation">
             {navLinks.map((link) =>
               link.children ? (
                 <div key={link.label} className="relative group">
                   <button
-                    className="flex items-center gap-1 px-3 py-2 rounded text-sm font-medium transition-[color,opacity] duration-150 hover:opacity-80"
-                    style={{ color: "#A7A7B3" }}
-                    onMouseEnter={() => setServicesOpen(true)}
-                    onMouseLeave={() => setServicesOpen(false)}
+                    className="flex items-center gap-1.5 px-3.5 py-2 rounded-md text-[13px] font-medium tracking-wide transition-colors duration-150 outline-none"
+                    style={{
+                      color: isActive(link.href) ? "#D6A84F" : "#C8C8D4",
+                    }}
+                    aria-expanded="false"
+                    aria-haspopup="true"
+                    onMouseEnter={(e) => {
+                      (e.currentTarget as HTMLElement).style.color = "#FFFFFF";
+                    }}
+                    onMouseLeave={(e) => {
+                      (e.currentTarget as HTMLElement).style.color = isActive(link.href) ? "#D6A84F" : "#C8C8D4";
+                    }}
                   >
                     {link.label}
-                    <ChevronDown size={14} />
+                    <ChevronDown
+                      size={13}
+                      className="opacity-60 group-hover:opacity-100 transition-[transform,opacity] duration-200 group-hover:rotate-180"
+                    />
                   </button>
+
+                  {/* Dropdown */}
                   <div
-                    className="absolute top-full left-0 pt-2 w-52"
-                    onMouseEnter={() => setServicesOpen(true)}
-                    onMouseLeave={() => setServicesOpen(false)}
+                    className="absolute top-full left-0 pt-3 w-56 opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto"
+                    style={{ transition: "opacity 0.2s ease" }}
                   >
                     <div
-                      className="glass-card rounded-lg py-2 opacity-0 group-hover:opacity-100 translate-y-1 group-hover:translate-y-0 transition-[opacity,transform] duration-200 pointer-events-none group-hover:pointer-events-auto"
+                      className="rounded-xl py-2 overflow-hidden"
+                      style={{
+                        background: "rgba(13,13,18,0.98)",
+                        border: "1px solid rgba(214,168,79,0.15)",
+                        boxShadow: "0 16px 40px rgba(0,0,0,0.6), 0 0 0 1px rgba(0,0,0,0.3)",
+                      }}
                     >
                       {link.children.map((child) => (
                         <Link
                           key={child.href}
                           href={child.href}
-                          className="block px-4 py-2 text-sm transition-[color,background] duration-150 hover:text-white"
-                          style={{ color: "#A7A7B3" }}
-                          onMouseEnter={(e) => {
-                            (e.currentTarget as HTMLElement).style.color = "#D6A84F";
-                          }}
-                          onMouseLeave={(e) => {
-                            (e.currentTarget as HTMLElement).style.color = "#A7A7B3";
+                          className="nav-dropdown-item block px-4 py-2.5 text-[12.5px] font-medium transition-[background,color] duration-100"
+                          style={{
+                            color: pathname === child.href ? "#D6A84F" : "#A7A7B8",
                           }}
                         >
                           {child.label}
@@ -118,115 +149,142 @@ export default function Header() {
                 <Link
                   key={link.href}
                   href={link.href}
-                  className="px-3 py-2 rounded text-sm font-medium transition-[color,opacity] duration-150 hover:opacity-80"
-                  style={{ color: "#A7A7B3" }}
+                  className="relative px-3.5 py-2 rounded-md text-[13px] font-medium tracking-wide transition-colors duration-150 outline-none"
+                  style={{ color: isActive(link.href) ? "#D6A84F" : "#C8C8D4" }}
                   onMouseEnter={(e) => {
-                    (e.currentTarget as HTMLElement).style.color = "#D6A84F";
+                    if (!isActive(link.href)) (e.currentTarget as HTMLElement).style.color = "#FFFFFF";
                   }}
                   onMouseLeave={(e) => {
-                    (e.currentTarget as HTMLElement).style.color = "#A7A7B3";
+                    (e.currentTarget as HTMLElement).style.color = isActive(link.href) ? "#D6A84F" : "#C8C8D4";
                   }}
                 >
                   {link.label}
+                  {/* Active underline */}
+                  {isActive(link.href) && (
+                    <span
+                      className="absolute bottom-0 left-1/2 -translate-x-1/2 h-0.5 w-4 rounded-full"
+                      style={{ background: "#D6A84F" }}
+                    />
+                  )}
                 </Link>
               )
             )}
           </nav>
 
-          {/* CTA */}
+          {/* ── Desktop CTA ───────────────────────────────────────────────── */}
           <div className="hidden lg:flex items-center gap-3">
             <a
               href={whatsappGeneral()}
               target="_blank"
               rel="noopener noreferrer"
-              className="btn-gold"
+              className="btn-gold text-[12px] py-2.5 px-5"
+              aria-label="Contact Soundbox Dubai on WhatsApp"
             >
               WhatsApp Us
             </a>
           </div>
 
-          {/* Mobile menu toggle */}
+          {/* ── Mobile toggle ─────────────────────────────────────────────── */}
           <button
-            className="lg:hidden p-2 rounded"
-            style={{ color: "#D6A84F" }}
+            className="lg:hidden flex items-center justify-center w-10 h-10 rounded-lg transition-[background] duration-150"
+            style={{
+              color: "#D6A84F",
+              background: mobileOpen ? "rgba(214,168,79,0.1)" : "transparent",
+            }}
             onClick={() => setMobileOpen(!mobileOpen)}
-            aria-label="Toggle menu"
+            aria-label={mobileOpen ? "Close menu" : "Open menu"}
+            aria-expanded={mobileOpen}
           >
-            {mobileOpen ? <X size={24} /> : <Menu size={24} />}
+            {mobileOpen ? <X size={22} /> : <Menu size={22} />}
           </button>
         </div>
       </div>
 
-      {/* Mobile menu */}
-      {mobileOpen && (
-        <div
-          className="lg:hidden border-t"
-          style={{
-            background: "rgba(5,5,5,0.98)",
-            borderColor: "rgba(214,168,79,0.15)",
-          }}
-        >
-          <div className="px-4 py-4 space-y-1 max-h-[80vh] overflow-y-auto">
-            {navLinks.map((link) => (
-              <div key={link.label}>
-                {link.children ? (
-                  <>
-                    <button
-                      className="w-full text-left px-3 py-3 text-sm font-medium flex items-center justify-between"
-                      style={{ color: "#D6A84F" }}
-                      onClick={() => setServicesOpen(!servicesOpen)}
-                    >
-                      {link.label}
-                      <ChevronDown
-                        size={14}
-                        style={{
-                          transform: servicesOpen ? "rotate(180deg)" : "none",
-                          transition: "transform 0.2s ease",
-                        }}
-                      />
-                    </button>
-                    {servicesOpen && (
-                      <div className="pl-4 space-y-1">
-                        {link.children.map((child) => (
-                          <Link
-                            key={child.href}
-                            href={child.href}
-                            className="block px-3 py-2 text-sm"
-                            style={{ color: "#A7A7B3" }}
-                            onClick={() => setMobileOpen(false)}
-                          >
-                            {child.label}
-                          </Link>
-                        ))}
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  <Link
-                    href={link.href}
-                    className="block px-3 py-3 text-sm font-medium"
-                    style={{ color: "#A7A7B3" }}
-                    onClick={() => setMobileOpen(false)}
+      {/* ── Mobile menu ───────────────────────────────────────────────────── */}
+      <div
+        className="lg:hidden overflow-hidden"
+        style={{
+          maxHeight: mobileOpen ? "100vh" : "0",
+          transition: "max-height 0.35s cubic-bezier(0.22, 1, 0.36, 1)",
+          background: "rgba(5,5,5,0.99)",
+          borderTop: mobileOpen ? "1px solid rgba(214,168,79,0.1)" : "none",
+        }}
+      >
+        <nav className="px-5 py-4 space-y-0.5 max-h-[82vh] overflow-y-auto" aria-label="Mobile navigation">
+          {navLinks.map((link) => (
+            <div key={link.label}>
+              {link.children ? (
+                <>
+                  <button
+                    className="w-full flex items-center justify-between px-4 py-3.5 rounded-lg text-[14px] font-medium transition-[background] duration-150"
+                    style={{
+                      color: isActive(link.href) ? "#D6A84F" : "#E0E0EC",
+                      background: isActive(link.href) ? "rgba(214,168,79,0.07)" : "transparent",
+                    }}
+                    onClick={() => setServicesOpen(!servicesOpen)}
+                    aria-expanded={servicesOpen}
                   >
                     {link.label}
-                  </Link>
-                )}
-              </div>
-            ))}
-            <div className="pt-4 pb-2">
-              <a
-                href={whatsappGeneral()}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="btn-gold w-full block text-center"
-                onClick={() => setMobileOpen(false)}
-              >
-                WhatsApp Us
-              </a>
+                    <ChevronDown
+                      size={15}
+                      style={{
+                        transform: servicesOpen ? "rotate(180deg)" : "none",
+                        transition: "transform 0.25s ease",
+                        color: "#D6A84F",
+                      }}
+                    />
+                  </button>
+                  <div
+                    className="overflow-hidden pl-4"
+                    style={{
+                      maxHeight: servicesOpen ? "500px" : "0",
+                      transition: "max-height 0.3s ease",
+                    }}
+                  >
+                    <div className="py-1 space-y-0.5">
+                      {link.children.map((child) => (
+                        <Link
+                          key={child.href}
+                          href={child.href}
+                          className="block px-4 py-2.5 rounded-lg text-[13px] font-medium transition-[background,color] duration-100"
+                          style={{
+                            color: pathname === child.href ? "#D6A84F" : "#8A8A9A",
+                            background: pathname === child.href ? "rgba(214,168,79,0.07)" : "transparent",
+                          }}
+                        >
+                          {child.label}
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <Link
+                  href={link.href}
+                  className="block px-4 py-3.5 rounded-lg text-[14px] font-medium transition-[background,color] duration-100"
+                  style={{
+                    color: isActive(link.href) ? "#D6A84F" : "#E0E0EC",
+                    background: isActive(link.href) ? "rgba(214,168,79,0.07)" : "transparent",
+                  }}
+                >
+                  {link.label}
+                </Link>
+              )}
             </div>
+          ))}
+
+          <div className="pt-4 pb-2">
+            <a
+              href={whatsappGeneral()}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn-gold w-full block text-center text-[13px]"
+            >
+              WhatsApp Us
+            </a>
           </div>
-        </div>
-      )}
+        </nav>
+      </div>
     </header>
   );
 }
