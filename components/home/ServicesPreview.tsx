@@ -38,7 +38,6 @@ export default function ServicesPreview() {
                 animationDelay: `${i * 0.06}s`,
               }}
             >
-              <span className="text-3xl">{service.icon}</span>
               <div>
                 <h3
                   className="text-lg font-semibold mb-1 group-hover:text-[#D6A84F] transition-[color] duration-150"

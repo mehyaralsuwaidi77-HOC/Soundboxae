@@ -72,11 +72,11 @@ export default function Header() {
           {/* ── Logo ──────────────────────────────────────────────────────── */}
           <Link href="/" className="flex items-center shrink-0" aria-label="Soundbox Dubai — Home">
             <Image
-              src="/logos/soundbox-logo.png"
+              src="/logos/soundbox-icon.png"
               alt="Soundbox Dubai"
-              width={148}
-              height={42}
-              className="object-contain w-[120px] sm:w-[148px]"
+              width={40}
+              height={40}
+              className="object-contain"
               priority
             />
           </Link>

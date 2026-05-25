@@ -79,8 +79,6 @@ export default function FeaturedCategories() {
                 }}
               />
 
-              <span className="text-4xl">{cat.icon}</span>
-
               <div>
                 <h3
                   className="text-xl font-bold mb-2 transition-[color] duration-150 group-hover:text-[#D6A84F]"
