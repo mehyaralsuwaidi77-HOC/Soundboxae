@@ -58,9 +58,6 @@ export default async function ServicesPage() {
             <a href={whatsappGeneral(settings.whatsappNumber)} target="_blank" rel="noopener noreferrer" className="btn-gold">
               Get a Quote
             </a>
-            <Link href="/products" className="btn-ghost">
-              Browse Products
-            </Link>
           </div>
         </div>
       </section>
