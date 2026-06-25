@@ -3,8 +3,7 @@
 import Image from "next/image";
 import { MessageCircle, Mail } from "lucide-react";
 import { useSettings } from "@/components/providers/SettingsProvider";
-
-const EMAIL_ADDRESS = "info@soundboxdubai.com";
+import { contactMailto } from "@/lib/mailto";
 
 export default function HeroSection() {
   const { whatsappUrl } = useSettings();
@@ -116,7 +115,7 @@ export default function HeroSection() {
             WhatsApp Us
           </a>
           <a
-            href={`mailto:${EMAIL_ADDRESS}`}
+            href={contactMailto}
             className="btn-ghost inline-flex items-center gap-2"
           >
             <Mail size={16} />

@@ -3,8 +3,7 @@
 import { MessageCircle, Mail } from "lucide-react";
 import { useSettings } from "@/components/providers/SettingsProvider";
 import { whatsappQuickQuote } from "@/lib/whatsapp";
-
-const EMAIL_ADDRESS = "info@soundboxdubai.com";
+import { contactMailto } from "@/lib/mailto";
 
 export default function FloatingTabs() {
   const { whatsappNumber } = useSettings();
@@ -55,7 +54,7 @@ export default function FloatingTabs() {
 
       {/* Email tab */}
       <a
-        href={`mailto:${EMAIL_ADDRESS}`}
+        href={contactMailto}
         onClick={() => trackEvent("quick_email_click")}
         aria-label="Email Soundbox Dubai"
         className="group flex items-center gap-0 rounded-l-xl overflow-hidden"

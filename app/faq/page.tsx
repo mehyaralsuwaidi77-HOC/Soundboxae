@@ -5,6 +5,7 @@ import SectionHeader from "@/components/ui/SectionHeader";
 import FAQAccordion from "@/components/faq/FAQAccordion";
 import { whatsappLink } from "@/lib/whatsapp";
 import { getSiteSettings } from "@/lib/site-settings";
+import { contactMailto } from "@/lib/mailto";
 
 export const metadata: Metadata = {
   title: "FAQ — Frequently Asked Questions | Soundbox Dubai",
@@ -46,8 +47,6 @@ const faqs = [
     a: "We provide services across the UAE including Dubai, Abu Dhabi, Sharjah, Ajman, and surrounding areas. Additional transportation charges may apply depending on your event location outside Dubai.",
   },
 ];
-
-const EMAIL_ADDRESS = "info@soundboxdubai.com";
 
 export default async function FAQPage() {
   const settings = await getSiteSettings();
@@ -169,7 +168,7 @@ export default async function FAQPage() {
                 WhatsApp Us
               </a>
               <a
-                href={`mailto:${EMAIL_ADDRESS}`}
+                href={contactMailto}
                 className="btn-ghost inline-flex items-center gap-2 w-full sm:w-auto justify-center"
               >
                 <Mail size={15} />

@@ -13,9 +13,9 @@ function InstagramIcon({ size = 15 }: { size?: number }) {
 }
 import { whatsappGeneral } from "@/lib/whatsapp";
 import { getSiteSettings } from "@/lib/site-settings";
+import { CONTACT_EMAIL, contactMailto } from "@/lib/mailto";
 
 const INSTAGRAM_URL = "https://www.instagram.com/soundboxdubai/";
-const EMAIL_ADDRESS = "info@soundboxdubai.com";
 
 const serviceLinks = [
   { label: "Audio Systems", href: "/services/audio-systems" },
@@ -87,12 +87,12 @@ export default async function Footer() {
             </div>
             <div className="mt-3">
               <a
-                href={`mailto:${EMAIL_ADDRESS}`}
+                href={contactMailto}
                 className="inline-flex items-center gap-2 text-sm transition-[color] duration-150 hover:text-white"
                 style={{ color: "#A7A7B3" }}
               >
                 <Mail size={14} style={{ color: "#D6A84F" }} />
-                {EMAIL_ADDRESS}
+                {CONTACT_EMAIL}
               </a>
             </div>
           </div>
@@ -171,11 +171,11 @@ export default async function Footer() {
               <li className="flex items-center gap-3">
                 <Mail size={16} style={{ color: "#D6A84F", flexShrink: 0 }} />
                 <a
-                  href={`mailto:${EMAIL_ADDRESS}`}
+                  href={contactMailto}
                   className="text-sm transition-[color] duration-150 hover:text-white"
                   style={{ color: "#A7A7B3" }}
                 >
-                  {EMAIL_ADDRESS}
+                  {CONTACT_EMAIL}
                 </a>
               </li>
               <li className="flex items-center gap-3">

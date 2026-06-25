@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback } from "react";
 import Image from "next/image";
 import { MapPin, Calendar, X, ChevronLeft, ChevronRight, Play } from "lucide-react";
-import { type GalleryCategory, galleryCategories } from "@/data/gallery";
 
 export interface GalleryDisplayItem {
   id: string;
@@ -173,13 +172,7 @@ export default function GalleryGrid({
   items: GalleryDisplayItem[];
   isLive: boolean;
 }) {
-  const [activeCategory, setActiveCategory] = useState<GalleryCategory>("all");
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
-
-  const filtered =
-    activeCategory === "all"
-      ? items
-      : items.filter((g) => g.category === activeCategory);
 
   function openLightbox(i: number) {
     setLightboxIndex(i);
@@ -187,47 +180,15 @@ export default function GalleryGrid({
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        event_name: filtered[i].mediaType === "video" ? "gallery_video_played" : "gallery_media_opened",
+        event_name: items[i].mediaType === "video" ? "gallery_video_played" : "gallery_media_opened",
         event_type: "engagement",
-        metadata: { title: filtered[i].title, mediaType: filtered[i].mediaType ?? "image" },
+        metadata: { title: items[i].title, mediaType: items[i].mediaType ?? "image" },
       }),
     }).catch(() => {});
   }
 
   return (
     <>
-      {/* Filter bar */}
-      <section
-        className="sticky top-20 z-30 py-4"
-        style={{
-          background: "rgba(11,11,15,0.95)",
-          backdropFilter: "blur(12px)",
-          borderBottom: "1px solid rgba(214,168,79,0.08)",
-        }}
-      >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center gap-2 overflow-x-auto pb-1">
-            {galleryCategories.map((cat) => (
-              <button
-                key={cat.value}
-                onClick={() => setActiveCategory(cat.value)}
-                className="shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-[background,color,border-color] duration-200"
-                style={{
-                  background:
-                    activeCategory === cat.value
-                      ? "linear-gradient(135deg, #D6A84F, #B8852A)"
-                      : "rgba(17,17,24,0.8)",
-                  color: activeCategory === cat.value ? "#050505" : "#A7A7B3",
-                  border: `1px solid ${activeCategory === cat.value ? "transparent" : "rgba(214,168,79,0.15)"}`,
-                }}
-              >
-                {cat.label}
-              </button>
-            ))}
-          </div>
-        </div>
-      </section>
-
       {/* Grid */}
       <section className="py-16" style={{ background: "#0B0B0F" }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -245,7 +206,7 @@ export default function GalleryGrid({
           )}
 
           <div className="columns-1 sm:columns-2 lg:columns-3 gap-5 space-y-5">
-            {filtered.map((item, i) => {
+            {items.map((item, i) => {
               const isVideo = item.mediaType === "video" || Boolean(item.videoUrl);
               const thumb = item.thumbnailUrl ?? item.image ?? "";
 
@@ -358,7 +319,7 @@ export default function GalleryGrid({
             })}
           </div>
 
-          {filtered.length === 0 && (
+          {items.length === 0 && (
             <p className="text-center py-20" style={{ color: "#5A5A6E" }}>
               No items in this category yet.
             </p>
@@ -369,11 +330,11 @@ export default function GalleryGrid({
       {/* Lightbox */}
       {lightboxIndex !== null && (
         <Lightbox
-          items={filtered}
+          items={items}
           index={lightboxIndex}
           onClose={() => setLightboxIndex(null)}
           onPrev={() => setLightboxIndex((i) => (i !== null && i > 0 ? i - 1 : i))}
-          onNext={() => setLightboxIndex((i) => (i !== null && i < filtered.length - 1 ? i + 1 : i))}
+          onNext={() => setLightboxIndex((i) => (i !== null && i < items.length - 1 ? i + 1 : i))}
         />
       )}
     </>

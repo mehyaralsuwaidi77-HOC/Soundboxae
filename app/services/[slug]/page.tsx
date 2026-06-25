@@ -8,6 +8,7 @@ import WhatsAppLeadModal from "@/components/ui/WhatsAppLeadModal";
 import { services, getServiceBySlug } from "@/data/services";
 import { whatsappInquiry } from "@/lib/whatsapp";
 import { getSiteSettings } from "@/lib/site-settings";
+import { contactMailto } from "@/lib/mailto";
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -113,7 +114,7 @@ export default async function ServicePage({ params }: Props) {
                 Inquire Now
               </WhatsAppLeadModal>
               <a
-                href="mailto:info@soundboxdubai.com"
+                href={contactMailto}
                 className="btn-ghost inline-flex items-center gap-2"
               >
                 <Mail size={15} />
@@ -223,7 +224,7 @@ export default async function ServicePage({ params }: Props) {
                   WhatsApp Us
                 </WhatsAppLeadModal>
                 <a
-                  href="mailto:info@soundboxdubai.com"
+                  href={contactMailto}
                   className="btn-ghost w-full flex items-center justify-center gap-2 text-sm"
                 >
                   <Mail size={14} /> Email Us

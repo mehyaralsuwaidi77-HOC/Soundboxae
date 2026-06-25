@@ -11,9 +11,9 @@ function InstagramIcon({ size = 16 }: { size?: number }) {
 }
 import { whatsappGeneral } from "@/lib/whatsapp";
 import { getSiteSettings } from "@/lib/site-settings";
+import { contactMailto } from "@/lib/mailto";
 
 const INSTAGRAM_URL = "https://www.instagram.com/soundboxdubai/";
-const EMAIL_ADDRESS  = "info@soundboxdubai.com";
 
 export default async function CTASection() {
   const settings = await getSiteSettings();
@@ -61,7 +61,7 @@ export default async function CTASection() {
             WhatsApp Us Now
           </a>
           <a
-            href={`mailto:${EMAIL_ADDRESS}`}
+            href={contactMailto}
             className="btn-ghost inline-flex items-center gap-2"
           >
             <Mail size={16} />

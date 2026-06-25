@@ -32,9 +32,10 @@ const EVENT_TYPES = [
   "Other",
 ];
 
+import { contactMailto } from "@/lib/mailto";
+
 const INSTAGRAM_URL = "https://www.instagram.com/soundboxdubai/";
 const FACEBOOK_URL  = "https://www.facebook.com/soundboxdubai/";
-const EMAIL_ADDRESS = "info@soundboxdubai.com";
 
 interface Props {
   open: boolean;
@@ -180,7 +181,7 @@ export default function ContactModal({ open, onClose }: Props) {
                   <MessageCircle size={15} /> WhatsApp Us
                 </a>
                 <a
-                  href={`mailto:${EMAIL_ADDRESS}`}
+                  href={contactMailto}
                   onClick={() => fireAnalytics("email_cta_click")}
                   className="btn-ghost inline-flex items-center gap-2 justify-center"
                 >
@@ -318,7 +319,7 @@ export default function ContactModal({ open, onClose }: Props) {
                     <MessageCircle size={14} /> WhatsApp
                   </a>
                   <a
-                    href={`mailto:${EMAIL_ADDRESS}`}
+                    href={contactMailto}
                     onClick={() => fireAnalytics("email_cta_click")}
                     className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-[background,color] duration-150"
                     style={{ background: "rgba(214,168,79,0.08)", color: "#D6A84F", border: "1px solid rgba(214,168,79,0.15)" }}
