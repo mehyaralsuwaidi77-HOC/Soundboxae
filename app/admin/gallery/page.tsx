@@ -15,6 +15,7 @@ const ACCEPTED_TYPES = "image/png,image/jpeg,image/webp,image/gif,video/mp4,vide
 
 const emptyForm = {
   title: "", category: "corporate", image: "", videoUrl: "", thumbnailUrl: "",
+  thumbnailStoragePath: "",
   storagePath: "", location: "", year: new Date().getFullYear(),
   tags: "", featured: false, visible: true, altText: "", caption: "",
   mediaType: "image" as "image" | "video",
@@ -26,24 +27,25 @@ const emptyIgForm = {
 
 type DisplayItem = {
   id: string; title: string; category: string; image: string;
-  videoUrl?: string; thumbnailUrl?: string; mediaType?: string;
+  videoUrl?: string; thumbnailUrl?: string; thumbnailStoragePath?: string; mediaType?: string;
   location?: string; featured: boolean; visible: boolean; caption?: string;
 };
 
 function dbToDisplay(item: DbGalleryItem): DisplayItem {
   const meta = item.metadata as Record<string, string> | null;
   return {
-    id:           item.id,
-    title:        item.title ?? "",
-    category:     (item.section as { slug?: string } | null)?.slug ?? "general",
-    image:        item.image_url,
-    videoUrl:     item.video_url,
-    thumbnailUrl: item.thumbnail_url,
-    mediaType:    item.media_type ?? "image",
-    location:     meta?.location,
-    featured:     item.is_featured,
-    visible:      item.is_visible,
-    caption:      item.caption ?? undefined,
+    id:                   item.id,
+    title:                item.title ?? "",
+    category:             (item.section as { slug?: string } | null)?.slug ?? "general",
+    image:                item.image_url,
+    videoUrl:             item.video_url,
+    thumbnailUrl:         item.thumbnail_url,
+    thumbnailStoragePath: item.thumbnail_storage_path,
+    mediaType:            item.media_type ?? "image",
+    location:             meta?.location,
+    featured:             item.is_featured,
+    visible:              item.is_visible,
+    caption:              item.caption ?? undefined,
   };
 }
 
@@ -68,7 +70,9 @@ export default function AdminGalleryPage() {
   const [igError, setIgError]       = useState<string | null>(null);
   const [loading, setLoading]       = useState(true);
   const [saveError, setSaveError]   = useState<string | null>(null);
-  const fileRef = useRef<HTMLInputElement>(null);
+  const [showMissingThumbs, setShowMissingThumbs] = useState(false);
+  const fileRef      = useRef<HTMLInputElement>(null);
+  const thumbnailRef = useRef<HTMLInputElement>(null);
 
   async function load() {
     setLoading(true);
@@ -122,6 +126,87 @@ export default function AdminGalleryPage() {
     return { url: publicUrl, path, isVideo };
   }
 
+  // ── Auto-extract thumbnail from video frame via canvas ──────────────────────
+
+  async function extractVideoThumbnail(videoFile: File): Promise<Blob | null> {
+    return new Promise((resolve) => {
+      const video = document.createElement("video");
+      video.preload = "metadata";
+      video.muted   = true;
+      video.playsInline = true;
+      const objectUrl = URL.createObjectURL(videoFile);
+      video.src = objectUrl;
+      const cleanup = () => URL.revokeObjectURL(objectUrl);
+
+      video.addEventListener("loadeddata", () => {
+        const seekTo = video.duration > 0 ? Math.min(1, video.duration * 0.1) : 0;
+        video.currentTime = seekTo;
+      }, { once: true });
+
+      video.addEventListener("seeked", () => {
+        const w = video.videoWidth;
+        const h = video.videoHeight;
+        if (!w || !h) { cleanup(); resolve(null); return; }
+        const scale  = Math.min(1, 1280 / w);
+        const canvas = document.createElement("canvas");
+        canvas.width  = Math.round(w * scale);
+        canvas.height = Math.round(h * scale);
+        const ctx = canvas.getContext("2d");
+        if (!ctx) { cleanup(); resolve(null); return; }
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        cleanup();
+        canvas.toBlob((blob) => resolve(blob), "image/jpeg", 0.85);
+      }, { once: true });
+
+      video.addEventListener("error", () => { cleanup(); resolve(null); });
+      video.load();
+    });
+  }
+
+  async function generateAndUploadThumbnail(
+    videoFile: File,
+  ): Promise<{ url: string; path: string } | null> {
+    if (!isSupabaseConfigured) return null;
+    try {
+      const blob = await extractVideoThumbnail(videoFile);
+      if (!blob) return null;
+      const path = `gallery/thumbs/${Date.now()}_thumb.jpg`;
+      const { error } = await supabase.storage.from("gallery").upload(path, blob, {
+        contentType: "image/jpeg", upsert: false,
+      });
+      if (error) return null;
+      const { data: { publicUrl } } = supabase.storage.from("gallery").getPublicUrl(path);
+      return { url: publicUrl, path };
+    } catch {
+      return null;
+    }
+  }
+
+  async function handleThumbnailFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    setUploadProgress("Uploading thumbnail…");
+    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+    const path = `gallery/thumbs/${Date.now()}_${safeName}`;
+    if (isSupabaseConfigured) {
+      const { error } = await supabase.storage.from("gallery").upload(path, file, {
+        contentType: file.type, upsert: false,
+      });
+      if (error) {
+        alert(`Thumbnail upload failed: ${error.message}`);
+      } else {
+        const { data: { publicUrl } } = supabase.storage.from("gallery").getPublicUrl(path);
+        setForm((f) => ({ ...f, thumbnailUrl: publicUrl, thumbnailStoragePath: path }));
+      }
+    } else {
+      setForm((f) => ({ ...f, thumbnailUrl: URL.createObjectURL(file), thumbnailStoragePath: "" }));
+    }
+    setUploadProgress("");
+    setUploading(false);
+    if (e.target) e.target.value = "";
+  }
+
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files ?? []);
     if (!files.length) return;
@@ -134,6 +219,15 @@ export default function AdminGalleryPage() {
         if (result) {
           if (result.isVideo) {
             setForm((f) => ({ ...f, videoUrl: result.url, storagePath: result.path, mediaType: "video" }));
+            setUploadProgress("Extracting thumbnail from video…");
+            const thumb = await generateAndUploadThumbnail(file);
+            if (thumb) {
+              setForm((f) => ({ ...f, thumbnailUrl: thumb.url, thumbnailStoragePath: thumb.path }));
+              setUploadProgress("✓ Thumbnail auto-generated");
+            } else {
+              setUploadProgress("Video uploaded — add a thumbnail manually if needed.");
+            }
+            setTimeout(() => setUploadProgress(""), 3500);
           } else {
             setForm((f) => ({ ...f, image: result.url, storagePath: result.path, mediaType: "image" }));
           }
@@ -161,17 +255,24 @@ export default function AdminGalleryPage() {
               .maybeSingle();
             const sectionId = (section as { id: string } | null)?.id ?? null;
 
+            let bulkThumb: { url: string; path: string } | null = null;
+            if (result.isVideo) {
+              setUploadProgress("Generating thumbnail…");
+              bulkThumb = await generateAndUploadThumbnail(file);
+            }
             await supabase.from("gallery_items").insert({
-              title:        file.name.replace(/\.[^.]+$/, "").replace(/_/g, " "),
-              image_url:    result.isVideo ? "" : result.url,
-              video_url:    result.isVideo ? result.url : null,
-              media_type:   result.isVideo ? "video" : "image",
-              storage_path: result.path,
-              is_featured:  false,
-              is_visible:   true,
-              section_id:   sectionId,
-              source:       "admin_bulk",
-              sort_order:   items.length,
+              title:                   file.name.replace(/\.[^.]+$/, "").replace(/_/g, " "),
+              image_url:               result.isVideo ? "" : result.url,
+              video_url:               result.isVideo ? result.url : null,
+              thumbnail_url:           bulkThumb?.url ?? null,
+              thumbnail_storage_path:  bulkThumb?.path ?? null,
+              media_type:              result.isVideo ? "video" : "image",
+              storage_path:            result.path,
+              is_featured:             false,
+              is_visible:              true,
+              section_id:              sectionId,
+              source:                  "admin_bulk",
+              sort_order:              items.length,
             });
           }
         }
@@ -218,10 +319,11 @@ export default function AdminGalleryPage() {
     setForm({
       title:        item.title,
       category:     item.category,
-      image:        item.image ?? "",
-      videoUrl:     item.videoUrl ?? "",
-      thumbnailUrl: item.thumbnailUrl ?? "",
-      storagePath:  "",
+      image:                item.image ?? "",
+      videoUrl:             item.videoUrl ?? "",
+      thumbnailUrl:         item.thumbnailUrl ?? "",
+      thumbnailStoragePath: item.thumbnailStoragePath ?? "",
+      storagePath:          "",
       location:     item.location ?? "",
       year:         new Date().getFullYear(),
       tags:         "",
@@ -264,7 +366,8 @@ export default function AdminGalleryPage() {
         // (migration 004 drops that constraint; this fallback handles pre-migration state too)
         image_url:    form.mediaType === "image"  ? form.image    : "",
         video_url:    form.mediaType === "video"  ? form.videoUrl : null,
-        thumbnail_url: form.thumbnailUrl || null,
+        thumbnail_url:           form.thumbnailUrl || null,
+        thumbnail_storage_path:  form.thumbnailStoragePath || null,
         media_type:   form.mediaType,
         caption:      form.caption || null,
         alt_text:     form.altText || form.title,
@@ -335,15 +438,35 @@ export default function AdminGalleryPage() {
     }
   }
 
+  const displayItems = showMissingThumbs
+    ? items.filter(i => (i.mediaType === "video" || Boolean(i.videoUrl)) && !i.thumbnailUrl)
+    : items;
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold" style={{ fontFamily: "var(--font-display)" }}>Gallery Management</h1>
-          <p className="text-sm" style={{ color: "#A7A7B3" }}>{items.length} item{items.length !== 1 ? "s" : ""} · Supports images &amp; videos</p>
+          <p className="text-sm" style={{ color: "#A7A7B3" }}>
+            {items.length} item{items.length !== 1 ? "s" : ""} · Supports images &amp; videos
+            {(() => { const n = items.filter(i => (i.mediaType === "video" || i.videoUrl) && !i.thumbnailUrl).length; return n > 0 ? <span style={{ color: "#F2994A" }}> · {n} video{n !== 1 ? "s" : ""} missing thumbnail</span> : null; })()}
+          </p>
         </div>
         <div className="flex gap-3">
           <button onClick={load} className="p-2 rounded-lg glass-card" style={{ color: "#D6A84F" }}><RefreshCw size={15} /></button>
+          {items.some(i => (i.mediaType === "video" || i.videoUrl) && !i.thumbnailUrl) && (
+            <button
+              onClick={() => setShowMissingThumbs(v => !v)}
+              className="px-3 py-2 rounded-lg text-xs font-medium inline-flex items-center gap-2 border transition-[background] duration-150"
+              style={{
+                borderColor: showMissingThumbs ? "rgba(242,153,74,0.5)" : "rgba(242,153,74,0.25)",
+                color: "#F2994A",
+                background: showMissingThumbs ? "rgba(242,153,74,0.12)" : "transparent",
+              }}
+            >
+              ⚠ Missing Thumbnails
+            </button>
+          )}
           <button
             onClick={() => { setShowIgForm(!showIgForm); setShowForm(false); }}
             className="px-3 py-2 rounded-lg text-sm font-medium inline-flex items-center gap-2 border transition-[background] duration-150"
@@ -368,7 +491,7 @@ export default function AdminGalleryPage() {
         </div>
       </div>
 
-      {/* Hidden bulk file input */}
+      {/* Hidden file inputs */}
       <input
         ref={fileRef}
         type="file"
@@ -376,6 +499,13 @@ export default function AdminGalleryPage() {
         multiple
         className="hidden"
         onChange={handleFileChange}
+      />
+      <input
+        ref={thumbnailRef}
+        type="file"
+        accept="image/png,image/jpeg,image/webp"
+        className="hidden"
+        onChange={handleThumbnailFileChange}
       />
 
       {uploadProgress && (
@@ -576,16 +706,42 @@ export default function AdminGalleryPage() {
               )}
             </div>
             {form.mediaType === "video" && (
-              <div>
-                <label className="block text-xs mb-1" style={{ color: "#A7A7B3" }}>Thumbnail URL (optional)</label>
-                <input
-                  type="text"
-                  value={form.thumbnailUrl}
-                  onChange={(e) => setForm({ ...form, thumbnailUrl: e.target.value })}
-                  placeholder="Paste thumbnail image URL"
-                  className="w-full bg-[#181824] rounded-lg px-3 py-2 text-sm border outline-none"
-                  style={{ color: "#FFF", borderColor: "rgba(214,168,79,0.2)" }}
-                />
+              <div className="sm:col-span-2">
+                <label className="block text-xs mb-1" style={{ color: "#A7A7B3" }}>
+                  Thumbnail / Poster Image
+                  <span className="ml-1 opacity-50">(auto-generated on upload, or add manually)</span>
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={form.thumbnailUrl}
+                    onChange={(e) => setForm({ ...form, thumbnailUrl: e.target.value })}
+                    placeholder="Auto-generated or paste image URL"
+                    className="flex-1 bg-[#181824] rounded-lg px-3 py-2 text-sm border outline-none"
+                    style={{ color: "#FFF", borderColor: "rgba(214,168,79,0.2)" }}
+                  />
+                  <label
+                    className="px-3 py-2 rounded-lg text-xs border inline-flex items-center gap-1.5 cursor-pointer shrink-0"
+                    style={{ borderColor: "rgba(214,168,79,0.3)", color: uploading ? "#5A5A6E" : "#D6A84F" }}
+                  >
+                    <Upload size={13} /> Upload Thumbnail
+                    <input
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp"
+                      className="hidden"
+                      disabled={uploading}
+                      onChange={handleThumbnailFileChange}
+                    />
+                  </label>
+                </div>
+                {form.thumbnailUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={form.thumbnailUrl} alt="Thumbnail preview" className="mt-2 h-20 rounded-lg object-cover" />
+                ) : (
+                  <p className="text-[11px] mt-1.5" style={{ color: "#F2994A" }}>
+                    ⚠ No thumbnail — upload a video first to auto-generate one, or upload a poster image manually.
+                  </p>
+                )}
               </div>
             )}
             <div className="sm:col-span-2">
@@ -638,15 +794,17 @@ export default function AdminGalleryPage() {
         <div className="glass-card rounded-xl p-12 text-center">
           <div className="w-5 h-5 rounded-full border-2 border-[#D6A84F] border-t-transparent animate-spin mx-auto" />
         </div>
-      ) : items.length === 0 ? (
+      ) : displayItems.length === 0 ? (
         <div className="glass-card rounded-xl p-12 text-center">
-          <p style={{ color: "#5A5A6E" }}>No gallery items yet.</p>
+          <p style={{ color: "#5A5A6E" }}>
+            {showMissingThumbs ? "All videos have thumbnails — great!" : "No gallery items yet."}
+          </p>
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-          {items.map((item) => {
+          {displayItems.map((item) => {
             const isVideo = item.mediaType === "video";
-            const thumb   = item.thumbnailUrl ?? item.image ?? "";
+            const thumb   = item.thumbnailUrl ?? (isVideo ? "" : (item.image ?? ""));
             return (
               <div
                 key={item.id}
@@ -660,14 +818,26 @@ export default function AdminGalleryPage() {
                         // eslint-disable-next-line @next/next/no-img-element
                         <img src={thumb} alt={item.title} className="w-full h-full object-cover" />
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center" style={{ color: "#3A3A50" }}>
-                          <Play size={32} />
+                        /* Admin branded fallback */
+                        <div
+                          className="w-full h-full flex flex-col items-center justify-center gap-1.5 relative"
+                          style={{ background: "linear-gradient(135deg, #0D0D18 0%, #16162A 60%, #0D0D18 100%)" }}
+                        >
+                          <div
+                            className="absolute inset-0 pointer-events-none"
+                            style={{ background: "radial-gradient(ellipse 60% 60% at 50% 40%, rgba(214,168,79,0.08) 0%, transparent 70%)" }}
+                          />
+                          <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ background: "rgba(214,168,79,0.08)", border: "1px solid rgba(214,168,79,0.2)" }}>
+                            <Play size={14} style={{ color: "#D6A84F", marginLeft: 1 }} />
+                          </div>
                         </div>
                       )}
-                      <div className="absolute inset-0 flex items-center justify-center" style={{ background: "rgba(0,0,0,0.35)" }}>
-                        <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ background: "rgba(214,168,79,0.85)" }}>
-                          <Play size={16} style={{ color: "#050505", marginLeft: 1 }} />
-                        </div>
+                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none" style={{ background: thumb ? "rgba(0,0,0,0.3)" : "transparent" }}>
+                        {thumb && (
+                          <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ background: "rgba(214,168,79,0.85)" }}>
+                            <Play size={16} style={{ color: "#050505", marginLeft: 1 }} />
+                          </div>
+                        )}
                       </div>
                       <span
                         className="absolute bottom-2 right-2 text-xs px-2 py-0.5 rounded-full font-semibold"
@@ -675,6 +845,14 @@ export default function AdminGalleryPage() {
                       >
                         Video
                       </span>
+                      {!thumb && (
+                        <span
+                          className="absolute top-2 left-2 text-[10px] px-2 py-0.5 rounded-full font-semibold"
+                          style={{ background: "rgba(242,153,74,0.15)", color: "#F2994A", border: "1px solid rgba(242,153,74,0.3)" }}
+                        >
+                          ⚠ No thumbnail
+                        </span>
+                      )}
                     </>
                   ) : (
                     <Image src={item.image ?? ""} alt={item.title} fill className="object-cover" unoptimized />

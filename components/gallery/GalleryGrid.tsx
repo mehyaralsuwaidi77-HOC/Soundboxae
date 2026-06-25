@@ -116,7 +116,8 @@ function Lightbox({
           <video
             src={item.videoUrl}
             controls
-            autoPlay={false}
+            preload="none"
+            poster={item.thumbnailUrl ?? undefined}
             muted
             playsInline
             className="w-full max-h-[78vh] object-contain rounded-xl"
@@ -230,8 +231,37 @@ export default function GalleryGrid({
                           className="w-full h-full object-cover transition-[transform] duration-500 group-hover:scale-105"
                         />
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center" style={{ color: "#5A5A6E" }}>
-                          <Play size={40} />
+                        /* Premium branded fallback — no thumbnail available */
+                        <div
+                          className="w-full h-full flex flex-col items-center justify-center gap-2 relative"
+                          style={{ background: "linear-gradient(135deg, #0D0D18 0%, #16162A 60%, #0D0D18 100%)" }}
+                        >
+                          <div
+                            className="absolute inset-0 pointer-events-none"
+                            style={{
+                              background: "radial-gradient(ellipse 60% 60% at 50% 40%, rgba(214,168,79,0.09) 0%, transparent 70%)",
+                            }}
+                          />
+                          <div
+                            className="w-14 h-14 rounded-full flex items-center justify-center relative"
+                            style={{
+                              background: "rgba(214,168,79,0.07)",
+                              border: "1px solid rgba(214,168,79,0.22)",
+                              boxShadow: "0 0 24px rgba(214,168,79,0.08)",
+                            }}
+                          >
+                            <div
+                              className="absolute inset-[-5px] rounded-full"
+                              style={{ border: "1px solid rgba(214,168,79,0.07)" }}
+                            />
+                            <Play size={20} style={{ color: "#D6A84F", marginLeft: 2 }} />
+                          </div>
+                          <span
+                            className="text-[10px] font-semibold tracking-[0.18em] uppercase"
+                            style={{ color: "rgba(214,168,79,0.4)" }}
+                          >
+                            Soundbox Dubai
+                          </span>
                         </div>
                       )}
                       {/* Play icon overlay */}
