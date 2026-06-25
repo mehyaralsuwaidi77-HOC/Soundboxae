@@ -14,8 +14,7 @@ function InstagramIcon({ size = 15 }: { size?: number }) {
 import { whatsappGeneral } from "@/lib/whatsapp";
 import { getSiteSettings } from "@/lib/site-settings";
 import { CONTACT_EMAIL, contactMailto } from "@/lib/mailto";
-
-const INSTAGRAM_URL = "https://www.instagram.com/soundboxdubai/";
+import { INSTAGRAM_URL } from "@/lib/social";
 
 const serviceLinks = [
   { label: "Audio Systems", href: "/services/audio-systems" },

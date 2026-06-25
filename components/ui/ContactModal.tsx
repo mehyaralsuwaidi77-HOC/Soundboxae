@@ -33,9 +33,7 @@ const EVENT_TYPES = [
 ];
 
 import { contactMailto } from "@/lib/mailto";
-
-const INSTAGRAM_URL = "https://www.instagram.com/soundboxdubai/";
-const FACEBOOK_URL  = "https://www.facebook.com/soundboxdubai/";
+import { INSTAGRAM_URL, FACEBOOK_URL } from "@/lib/social";
 
 interface Props {
   open: boolean;

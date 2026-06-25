@@ -52,17 +52,17 @@ function Lightbox({
     };
   }, [handleKey]);
 
-  // Touch swipe
+  const isVideo = item.mediaType === "video" || Boolean(item.videoUrl);
+
+  // Touch swipe — disabled for video items so native seek-bar drags don't trigger navigation
   const [touchStart, setTouchStart] = useState<number | null>(null);
-  function onTouchStart(e: React.TouchEvent) { setTouchStart(e.touches[0].clientX); }
-  function onTouchEnd(e: React.TouchEvent) {
+  function handleTouchStart(e: React.TouchEvent) { setTouchStart(e.touches[0].clientX); }
+  function handleTouchEnd(e: React.TouchEvent) {
     if (touchStart === null) return;
     const diff = touchStart - e.changedTouches[0].clientX;
     if (Math.abs(diff) > 50) diff > 0 ? onNext() : onPrev();
     setTouchStart(null);
   }
-
-  const isVideo = item.mediaType === "video" || Boolean(item.videoUrl);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   useEffect(() => {
@@ -77,8 +77,8 @@ function Lightbox({
       className="fixed inset-0 z-[70] flex items-center justify-center"
       style={{ background: "rgba(0,0,0,0.95)", backdropFilter: "blur(12px)" }}
       onClick={onClose}
-      onTouchStart={onTouchStart}
-      onTouchEnd={onTouchEnd}
+      onTouchStart={!isVideo ? handleTouchStart : undefined}
+      onTouchEnd={!isVideo ? handleTouchEnd : undefined}
     >
       {/* Close */}
       <button
@@ -114,43 +114,49 @@ function Lightbox({
         </button>
       )}
 
-      {/* Media */}
+      {/* Media + Caption — stacked vertically so caption never covers controls */}
       <div
-        className="relative max-w-5xl max-h-[85vh] w-full mx-14 sm:mx-20 rounded-xl overflow-hidden"
+        className="flex flex-col max-w-5xl w-full mx-14 sm:mx-20"
         onClick={(e) => e.stopPropagation()}
-        style={{ boxShadow: "0 32px 80px rgba(0,0,0,0.8)" }}
       >
-        {isVideo && item.videoUrl ? (
-          <video
-            ref={videoRef}
-            src={item.videoUrl}
-            controls
-            autoPlay
-            preload="metadata"
-            poster={item.thumbnailUrl || undefined}
-            playsInline
-            className="w-full max-h-[78vh] object-contain rounded-xl"
-            style={{ background: "#000" }}
-          />
-        ) : (
-          <Image
-            src={item.image ?? item.thumbnailUrl ?? "/logos/soundbox-logo.png"}
-            alt={item.title}
-            width={1200}
-            height={800}
-            className="w-full max-h-[78vh] object-contain rounded-xl"
-            unoptimized
-            priority
-          />
-        )}
-
-        {/* Caption bar */}
+        {/* Media */}
         <div
-          className="absolute bottom-0 left-0 right-0 px-5 py-4"
-          style={{
-            background: "linear-gradient(to top, rgba(0,0,0,0.85), transparent)",
-          }}
+          className="rounded-xl overflow-hidden"
+          style={{ boxShadow: "0 32px 80px rgba(0,0,0,0.8)" }}
         >
+          {isVideo && item.videoUrl ? (
+            <video
+              ref={videoRef}
+              key={item.id}
+              src={item.videoUrl}
+              controls
+              autoPlay
+              preload="metadata"
+              poster={item.thumbnailUrl || undefined}
+              playsInline
+              style={{
+                display: "block",
+                width: "100%",
+                maxHeight: "74vh",
+                objectFit: "contain",
+                background: "#000",
+              }}
+            />
+          ) : (
+            <Image
+              src={item.image ?? item.thumbnailUrl ?? "/logos/soundbox-logo.png"}
+              alt={item.title}
+              width={1200}
+              height={800}
+              className="w-full max-h-[78vh] object-contain"
+              unoptimized
+              priority
+            />
+          )}
+        </div>
+
+        {/* Caption — rendered below media, never overlapping the video control bar */}
+        <div className="px-2 pt-3">
           <p className="text-sm font-semibold text-white">{item.title}</p>
           <div className="flex items-center gap-4 mt-1">
             {item.location && (

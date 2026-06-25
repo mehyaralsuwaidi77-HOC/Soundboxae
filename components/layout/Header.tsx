@@ -17,7 +17,7 @@ function InstagramIcon({ size = 14 }: { size?: number }) {
   );
 }
 
-const INSTAGRAM_URL = "https://www.instagram.com/soundboxdubai/";
+import { INSTAGRAM_URL } from "@/lib/social";
 
 const serviceLinks = [
   { label: "Audio Systems", href: "/services/audio-systems" },

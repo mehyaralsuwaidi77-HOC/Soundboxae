@@ -12,8 +12,7 @@ function InstagramIcon({ size = 16 }: { size?: number }) {
 import { whatsappGeneral } from "@/lib/whatsapp";
 import { getSiteSettings } from "@/lib/site-settings";
 import { contactMailto } from "@/lib/mailto";
-
-const INSTAGRAM_URL = "https://www.instagram.com/soundboxdubai/";
+import { INSTAGRAM_URL } from "@/lib/social";
 
 export default async function CTASection() {
   const settings = await getSiteSettings();
