@@ -130,10 +130,18 @@ export default function AdminGalleryPage() {
 
   async function extractVideoThumbnail(videoFile: File): Promise<Blob | null> {
     return new Promise((resolve) => {
+      // Must be appended to the DOM — off-DOM elements don't fire loadeddata/seeked
+      const container = document.createElement("div");
+      container.style.cssText =
+        "position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;overflow:hidden;pointer-events:none;";
+      document.body.appendChild(container);
+
       const video = document.createElement("video");
-      video.preload = "metadata";
-      video.muted   = true;
+      video.preload     = "metadata";
+      video.muted       = true;
       video.playsInline = true;
+      container.appendChild(video);
+
       const objectUrl = URL.createObjectURL(videoFile);
       video.src = objectUrl;
 
@@ -141,13 +149,11 @@ export default function AdminGalleryPage() {
       const cleanup = () => {
         if (timer) clearTimeout(timer);
         URL.revokeObjectURL(objectUrl);
+        if (container.parentNode) container.parentNode.removeChild(container);
       };
-      // Safety timeout — if seeked never fires (common with some encodings
-      // when the video element isn't appended to the DOM), resolve null.
-      timer = setTimeout(() => { cleanup(); resolve(null); }, 10000);
+      timer = setTimeout(() => { cleanup(); resolve(null); }, 15000);
 
       video.addEventListener("loadeddata", () => {
-        // Seek to 20% of the video, clamped 1.5s–5s, to skip logo/intro frames
         const seekTo = video.duration > 0
           ? Math.max(1.5, Math.min(5, video.duration * 0.2))
           : 1.5;

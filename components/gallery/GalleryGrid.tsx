@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import Image from "next/image";
 import { MapPin, Calendar, X, ChevronLeft, ChevronRight, Play } from "lucide-react";
 
@@ -64,6 +64,14 @@ function Lightbox({
 
   const isVideo = item.mediaType === "video" || Boolean(item.videoUrl);
 
+  const videoRef = useRef<HTMLVideoElement>(null);
+  useEffect(() => {
+    const v = videoRef.current;
+    if (!v || !isVideo) return;
+    v.load();
+    v.play().catch(() => {});
+  }, [index, isVideo]);
+
   return (
     <div
       className="fixed inset-0 z-[70] flex items-center justify-center"
@@ -114,8 +122,10 @@ function Lightbox({
       >
         {isVideo && item.videoUrl ? (
           <video
+            ref={videoRef}
             src={item.videoUrl}
             controls
+            autoPlay
             preload="metadata"
             poster={item.thumbnailUrl || undefined}
             playsInline
