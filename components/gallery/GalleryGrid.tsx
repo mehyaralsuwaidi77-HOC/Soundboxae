@@ -316,12 +316,6 @@ export default function GalleryGrid({
 
                   {/* Info */}
                   <div className="absolute bottom-0 left-0 right-0 p-5 translate-y-4 group-hover:translate-y-0 opacity-0 group-hover:opacity-100 transition-[transform,opacity] duration-300">
-                    <p
-                      className="text-xs font-semibold uppercase tracking-wider mb-1"
-                      style={{ color: "#D6A84F" }}
-                    >
-                      {item.category.replace("-", " ")}
-                    </p>
                     <h3 className="text-base font-bold text-white mb-2">{item.title}</h3>
                     <div className="flex items-center gap-4">
                       {item.location && (
