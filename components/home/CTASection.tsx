@@ -1,5 +1,4 @@
-import Link from "next/link";
-import { MessageCircle, CalendarCheck } from "lucide-react";
+import { MessageCircle, Mail } from "lucide-react";
 
 function InstagramIcon({ size = 16 }: { size?: number }) {
   return (
@@ -14,6 +13,7 @@ import { whatsappGeneral } from "@/lib/whatsapp";
 import { getSiteSettings } from "@/lib/site-settings";
 
 const INSTAGRAM_URL = "https://www.instagram.com/soundboxdubai/";
+const EMAIL_ADDRESS  = "info@soundboxdubai.com";
 
 export default async function CTASection() {
   const settings = await getSiteSettings();
@@ -51,18 +51,21 @@ export default async function CTASection() {
           from a single speaker to a full stadium production.
         </p>
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-          <Link href="/products" className="btn-gold inline-flex items-center gap-2">
-            <CalendarCheck size={16} />
-            Create Booking Request
-          </Link>
           <a
             href={waUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="btn-ghost inline-flex items-center gap-2"
+            className="btn-gold inline-flex items-center gap-2"
           >
             <MessageCircle size={16} />
             WhatsApp Us Now
+          </a>
+          <a
+            href={`mailto:${EMAIL_ADDRESS}`}
+            className="btn-ghost inline-flex items-center gap-2"
+          >
+            <Mail size={16} />
+            Email Us
           </a>
           <a
             href={INSTAGRAM_URL}

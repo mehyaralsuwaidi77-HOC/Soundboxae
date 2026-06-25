@@ -138,6 +138,13 @@ export interface DbGalleryItem {
   media_type?: string;
   imported_at?: string;
   section?: DbGallerySection;
+  // Video support fields (added by migration 003)
+  video_url?: string;
+  thumbnail_url?: string;
+  thumbnail_storage_path?: string;
+  mime_type?: string;
+  file_size?: number;
+  duration_seconds?: number;
 }
 
 export interface DbClientLogo {

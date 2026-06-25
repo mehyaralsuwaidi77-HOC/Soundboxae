@@ -18,6 +18,7 @@ export default async function GalleryPage() {
     title: g.title,
     category: g.category,
     image: g.image,
+    mediaType: "image" as const,
     location: g.location,
     year: g.year,
     tags: g.tags,
@@ -38,14 +39,18 @@ export default async function GalleryPage() {
         items = data.map((item) => {
           const meta = (item.metadata ?? {}) as Record<string, unknown>;
           const section = item.section as { slug?: string } | null;
+          const mediaType = (item.media_type ?? "image") as "image" | "video";
           return {
-            id: item.id as string,
-            title: (item.title as string) ?? "",
-            category: (section?.slug ?? "corporate") as string,
-            image: item.image_url as string,
-            location: meta.location as string | undefined,
-            year: meta.year as number | undefined,
-            tags: Array.isArray(meta.tags) ? (meta.tags as string[]) : [],
+            id:           item.id as string,
+            title:        (item.title as string) ?? "",
+            category:     (section?.slug ?? "corporate") as string,
+            image:        (item.image_url as string | undefined) ?? undefined,
+            videoUrl:     (item.video_url as string | undefined) ?? undefined,
+            thumbnailUrl: (item.thumbnail_url as string | undefined) ?? undefined,
+            mediaType,
+            location:     meta.location as string | undefined,
+            year:         meta.year as number | undefined,
+            tags:         Array.isArray(meta.tags) ? (meta.tags as string[]) : [],
           };
         });
         isLive = true;

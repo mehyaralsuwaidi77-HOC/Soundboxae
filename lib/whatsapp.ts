@@ -8,11 +8,39 @@ export function whatsappLink(message: string, number = DEFAULT_NUMBER): string {
   return `${base(number)}?text=${encodeURIComponent(message)}`;
 }
 
-export function whatsappInquiry(productName: string, number = DEFAULT_NUMBER): string {
+export function whatsappInquiry(
+  _serviceName: string,
+  number = DEFAULT_NUMBER
+): string {
   const msg =
-    `Hi Soundbox Dubai! I'm interested in renting: *${productName}*. ` +
-    `Could you please provide availability and details? Thank you.`;
+    `Hi Soundbox Dubai! I'm interested in renting Audio Visual Equipment for my event. ` +
+    `Could you please provide availability.`;
   return whatsappLink(msg, number);
+}
+
+export function whatsappServiceInquiry(
+  details: {
+    name?: string;
+    phone?: string;
+    eventType?: string;
+    eventDate?: string;
+    guests?: string;
+    notes?: string;
+  },
+  number = DEFAULT_NUMBER
+): string {
+  const lines: string[] = [
+    `Hi Soundbox Dubai! I'm interested in renting Audio Visual Equipment for my event. Could you please provide availability.`,
+    ``,
+    `Details of Event-`,
+  ];
+  if (details.name)      lines.push(`Name: ${details.name}`);
+  if (details.phone)     lines.push(`Phone: ${details.phone}`);
+  if (details.eventType) lines.push(`Event type: ${details.eventType}`);
+  if (details.eventDate) lines.push(`Event Date: ${details.eventDate}`);
+  if (details.guests)    lines.push(`Guests: ${details.guests}`);
+  if (details.notes)     lines.push(`Additional notes: ${details.notes}`);
+  return whatsappLink(lines.join("\n"), number);
 }
 
 export function whatsappBookingRequest(
@@ -21,18 +49,25 @@ export function whatsappBookingRequest(
 ): string {
   const serviceList = details.services.join(", ");
   const msg =
-    `Hi Soundbox Dubai! I'd like to submit a booking request:\n\n` +
-    `📅 *Event Date:* ${details.date}\n` +
-    `🎉 *Event Type:* ${details.eventType}\n` +
-    `👥 *Guests:* ${details.guests}\n` +
-    `🎛️ *Services Needed:* ${serviceList}\n\n` +
-    `Please confirm availability. Thank you!`;
+    `Hi Soundbox Dubai! I'm interested in renting Audio Visual Equipment for my event. Could you please provide availability.\n\n` +
+    `Details of Event-\n` +
+    `Event type: ${details.eventType}\n` +
+    `Event Date: ${details.date}\n` +
+    `Guests: ${details.guests}\n` +
+    (serviceList ? `Required equipment: ${serviceList}\n` : ``);
   return whatsappLink(msg, number);
 }
 
 export function whatsappGeneral(number = DEFAULT_NUMBER): string {
   return whatsappLink(
-    "Hi Soundbox Dubai! I'd like to enquire about your AV rental services.",
+    "Hi Soundbox Dubai! I'm interested in renting Audio Visual Equipment for my event.",
+    number
+  );
+}
+
+export function whatsappQuickQuote(number = DEFAULT_NUMBER): string {
+  return whatsappLink(
+    "Hi Soundbox Dubai! I'm interested in renting Audio Visual Equipment for my event.",
     number
   );
 }

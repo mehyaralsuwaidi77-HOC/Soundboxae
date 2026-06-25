@@ -1,9 +1,10 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
-import { MessageCircle, CalendarCheck } from "lucide-react";
+import { MessageCircle, Mail } from "lucide-react";
 import { useSettings } from "@/components/providers/SettingsProvider";
+
+const EMAIL_ADDRESS = "info@soundboxdubai.com";
 
 export default function HeroSection() {
   const { whatsappUrl } = useSettings();
@@ -78,34 +79,55 @@ export default function HeroSection() {
 
         {/* Subheadline */}
         <p
-          className="animate-fade-up delay-300 text-lg sm:text-xl md:text-2xl max-w-3xl mx-auto leading-relaxed mb-12"
+          className="animate-fade-up delay-300 text-lg sm:text-xl md:text-2xl max-w-3xl mx-auto leading-relaxed mb-6"
           style={{ color: "#A7A7B3" }}
         >
           World-class sound systems, dynamic lighting, LED screens, stages, and
           full event production — crafted for Dubai&apos;s most remarkable events.
         </p>
 
+        {/* Minimum order notice */}
+        <div className="animate-fade-up delay-350 flex justify-center mb-10">
+          <div
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-sm"
+            style={{
+              background: "rgba(214,168,79,0.08)",
+              border: "1px solid rgba(214,168,79,0.2)",
+              color: "#D6A84F",
+            }}
+          >
+            <span
+              className="w-1.5 h-1.5 rounded-full shrink-0"
+              style={{ background: "#D6A84F" }}
+            />
+            Minimum order AED 500 including setup, delivery &amp; collection
+          </div>
+        </div>
+
         {/* CTA buttons */}
         <div className="animate-fade-up delay-400 flex flex-col sm:flex-row items-center justify-center gap-4">
-          <Link href="/products" className="btn-gold inline-flex items-center gap-2">
-            <CalendarCheck size={16} />
-            Create Booking Request
-          </Link>
           <a
             href={whatsappUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="btn-ghost inline-flex items-center gap-2"
+            className="btn-gold inline-flex items-center gap-2"
           >
             <MessageCircle size={16} />
             WhatsApp Us
+          </a>
+          <a
+            href={`mailto:${EMAIL_ADDRESS}`}
+            className="btn-ghost inline-flex items-center gap-2"
+          >
+            <Mail size={16} />
+            Email Us
           </a>
         </div>
 
         {/* Stats bar */}
         <div className="animate-fade-up delay-600 mt-20 grid grid-cols-2 md:grid-cols-4 gap-6 max-w-3xl mx-auto">
           {[
-            { value: "500+", label: "Events Delivered" },
+            { value: "4,000+", label: "Events Delivered" },
             { value: "10+", label: "Years Experience" },
             { value: "50+", label: "Top Clients" },
             { value: "UAE", label: "Wide Coverage" },

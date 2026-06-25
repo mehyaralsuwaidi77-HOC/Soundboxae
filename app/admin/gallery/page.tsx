@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import Image from "next/image";
-import { Plus, Trash2, Eye, EyeOff, Upload, RefreshCw, Link as LinkIcon, Pencil, X } from "lucide-react";
+import { Plus, Trash2, Eye, EyeOff, Upload, RefreshCw, Link as LinkIcon, Pencil, X, Play } from "lucide-react";
 import { galleryItems as defaultItems, galleryCategories } from "@/data/gallery";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase/client";
 import {
@@ -11,10 +11,13 @@ import {
 } from "@/lib/storage";
 import type { DbGalleryItem } from "@/lib/supabase/types";
 
+const ACCEPTED_TYPES = "image/png,image/jpeg,image/webp,image/gif,video/mp4,video/webm";
+
 const emptyForm = {
-  title: "", category: "corporate", image: "", storagePath: "", location: "",
-  year: new Date().getFullYear(), tags: "", featured: false, visible: true,
-  altText: "", caption: "",
+  title: "", category: "corporate", image: "", videoUrl: "", thumbnailUrl: "",
+  storagePath: "", location: "", year: new Date().getFullYear(),
+  tags: "", featured: false, visible: true, altText: "", caption: "",
+  mediaType: "image" as "image" | "video",
 };
 
 const emptyIgForm = {
@@ -23,20 +26,24 @@ const emptyIgForm = {
 
 type DisplayItem = {
   id: string; title: string; category: string; image: string;
+  videoUrl?: string; thumbnailUrl?: string; mediaType?: string;
   location?: string; featured: boolean; visible: boolean; caption?: string;
 };
 
 function dbToDisplay(item: DbGalleryItem): DisplayItem {
   const meta = item.metadata as Record<string, string> | null;
   return {
-    id: item.id,
-    title: item.title ?? "",
-    category: (item.section as { slug?: string } | null)?.slug ?? "general",
-    image: item.image_url,
-    location: meta?.location,
-    featured: item.is_featured,
-    visible: item.is_visible,
-    caption: item.caption ?? undefined,
+    id:           item.id,
+    title:        item.title ?? "",
+    category:     (item.section as { slug?: string } | null)?.slug ?? "general",
+    image:        item.image_url,
+    videoUrl:     item.video_url,
+    thumbnailUrl: item.thumbnail_url,
+    mediaType:    item.media_type ?? "image",
+    location:     meta?.location,
+    featured:     item.is_featured,
+    visible:      item.is_visible,
+    caption:      item.caption ?? undefined,
   };
 }
 
@@ -56,6 +63,7 @@ export default function AdminGalleryPage() {
   const [form, setForm]             = useState(emptyForm);
   const [igForm, setIgForm]         = useState(emptyIgForm);
   const [uploading, setUploading]   = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<string>("");
   const [igLoading, setIgLoading]   = useState(false);
   const [igError, setIgError]       = useState<string | null>(null);
   const [loading, setLoading]       = useState(true);
@@ -79,9 +87,9 @@ export default function AdminGalleryPage() {
             location: g.location ?? "", year: g.year ?? new Date().getFullYear(),
             tags: g.tags,
             featured: (g as { featured?: boolean }).featured ?? false,
-            visible: (g as { visible?: boolean }).visible ?? true,
-            altText: (g as { altText?: string }).altText ?? g.title,
-            caption: (g as { caption?: string }).caption,
+            visible:  (g as { visible?: boolean }).visible  ?? true,
+            altText:  (g as { altText?: string }).altText   ?? g.title,
+            caption:  (g as { caption?: string }).caption,
           });
         });
         stored = getAdminGallery();
@@ -93,29 +101,86 @@ export default function AdminGalleryPage() {
 
   useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  async function handleUpload(file: File): Promise<{ url: string; path: string } | null> {
-    const ext = file.name.split(".").pop();
+  async function handleUpload(file: File): Promise<{ url: string; path: string; isVideo: boolean } | null> {
+    const isVideo = file.type.startsWith("video/");
     const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
     const path = `gallery/${Date.now()}_${safeName}`;
+
+    setUploadProgress(isVideo ? "Uploading video…" : "Uploading image…");
+
     const { error } = await supabase.storage.from("gallery").upload(path, file, {
       contentType: file.type, upsert: false,
     });
-    if (error) { alert(`Upload failed: ${error.message}`); return null; }
+    if (error) {
+      alert(`Upload failed: ${error.message}`);
+      setUploadProgress("");
+      return null;
+    }
     const { data: { publicUrl } } = supabase.storage.from("gallery").getPublicUrl(path);
-    return { url: publicUrl, path };
+    setUploadProgress("");
+    return { url: publicUrl, path, isVideo };
   }
 
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const files = Array.from(e.target.files ?? []);
+    if (!files.length) return;
     setUploading(true);
-    if (isSupabaseConfigured) {
-      const result = await handleUpload(file);
-      if (result) setForm((f) => ({ ...f, image: result.url, storagePath: result.path }));
+
+    if (files.length === 1) {
+      const file = files[0];
+      if (isSupabaseConfigured) {
+        const result = await handleUpload(file);
+        if (result) {
+          if (result.isVideo) {
+            setForm((f) => ({ ...f, videoUrl: result.url, storagePath: result.path, mediaType: "video" }));
+          } else {
+            setForm((f) => ({ ...f, image: result.url, storagePath: result.path, mediaType: "image" }));
+          }
+        }
+      } else {
+        const isVideo = file.type.startsWith("video/");
+        const url = URL.createObjectURL(file);
+        if (isVideo) {
+          setForm((f) => ({ ...f, videoUrl: url, mediaType: "video" }));
+        } else {
+          setForm((f) => ({ ...f, image: url, mediaType: "image" }));
+        }
+      }
     } else {
-      setForm((f) => ({ ...f, image: URL.createObjectURL(file) }));
+      // Bulk upload
+      setUploadProgress(`Uploading ${files.length} files…`);
+      for (const file of files) {
+        if (isSupabaseConfigured) {
+          const result = await handleUpload(file);
+          if (result) {
+            const { data: section } = await supabase
+              .from("gallery_sections")
+              .select("id")
+              .eq("slug", form.category)
+              .maybeSingle();
+            const sectionId = (section as { id: string } | null)?.id ?? null;
+
+            await supabase.from("gallery_items").insert({
+              title:        file.name.replace(/\.[^.]+$/, "").replace(/_/g, " "),
+              image_url:    result.isVideo ? null : result.url,
+              video_url:    result.isVideo ? result.url : null,
+              media_type:   result.isVideo ? "video" : "image",
+              storage_path: result.path,
+              is_featured:  false,
+              is_visible:   true,
+              section_id:   sectionId,
+              source:       "admin_bulk",
+              sort_order:   items.length,
+            });
+          }
+        }
+      }
+      setUploadProgress("");
+      await load();
     }
+
     setUploading(false);
+    if (e.target) e.target.value = "";
   }
 
   async function handleIgImport() {
@@ -127,12 +192,12 @@ export default function AdminGalleryPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          image_url: igForm.imageUrl,
-          caption: igForm.caption || null,
-          category: igForm.category,
-          instagram_permalink: igForm.permalink || null,
-          event_date: igForm.eventDate || null,
-          source: "instagram_manual",
+          image_url:            igForm.imageUrl,
+          caption:              igForm.caption || null,
+          category:             igForm.category,
+          instagram_permalink:  igForm.permalink || null,
+          event_date:           igForm.eventDate || null,
+          source:               "instagram_manual",
         }),
       });
       const json = await res.json();
@@ -150,17 +215,20 @@ export default function AdminGalleryPage() {
   function openEdit(item: DisplayItem) {
     setEditingId(item.id);
     setForm({
-      title:       item.title,
-      category:    item.category,
-      image:       item.image,
-      storagePath: "",
-      location:    item.location ?? "",
-      year:        new Date().getFullYear(),
-      tags:        "",
-      featured:    item.featured,
-      visible:     item.visible,
-      altText:     "",
-      caption:     item.caption ?? "",
+      title:        item.title,
+      category:     item.category,
+      image:        item.image ?? "",
+      videoUrl:     item.videoUrl ?? "",
+      thumbnailUrl: item.thumbnailUrl ?? "",
+      storagePath:  "",
+      location:     item.location ?? "",
+      year:         new Date().getFullYear(),
+      tags:         "",
+      featured:     item.featured,
+      visible:      item.visible,
+      altText:      "",
+      caption:      item.caption ?? "",
+      mediaType:    (item.mediaType as "image" | "video") ?? "image",
     });
     setShowForm(true);
     setShowIgForm(false);
@@ -174,7 +242,7 @@ export default function AdminGalleryPage() {
   }
 
   async function handleSave() {
-    if (!form.title || !form.image) return;
+    if (!form.title || (!form.image && !form.videoUrl)) return;
     if (isSupabaseConfigured) {
       const { data: section } = await supabase
         .from("gallery_sections")
@@ -184,34 +252,34 @@ export default function AdminGalleryPage() {
       const sectionId = (section as { id: string } | null)?.id ?? null;
       const metadata = {
         location: form.location,
-        year: form.year,
-        tags: form.tags.split(",").map((t) => t.trim()).filter(Boolean),
+        year:     form.year,
+        tags:     form.tags.split(",").map((t) => t.trim()).filter(Boolean),
+      };
+
+      const payload = {
+        title:        form.title,
+        image_url:    form.mediaType === "image"  ? form.image    : null,
+        video_url:    form.mediaType === "video"  ? form.videoUrl : null,
+        thumbnail_url: form.thumbnailUrl || null,
+        media_type:   form.mediaType,
+        caption:      form.caption || null,
+        alt_text:     form.altText || form.title,
+        is_featured:  form.featured,
+        is_visible:   form.visible,
+        section_id:   sectionId,
+        metadata,
       };
 
       if (editingId) {
         await supabase.from("gallery_items").update({
-          title:        form.title,
-          image_url:    form.image,
+          ...payload,
           ...(form.storagePath ? { storage_path: form.storagePath } : {}),
-          caption:      form.caption || null,
-          alt_text:     form.altText || form.title,
-          is_featured:  form.featured,
-          is_visible:   form.visible,
-          section_id:   sectionId,
-          metadata,
         }).eq("id", editingId);
       } else {
         await supabase.from("gallery_items").insert({
-          title:        form.title,
-          image_url:    form.image,
+          ...payload,
           storage_path: form.storagePath || null,
-          caption:      form.caption || null,
-          alt_text:     form.altText || form.title,
-          is_featured:  form.featured,
-          is_visible:   form.visible,
-          section_id:   sectionId,
           source:       "admin",
-          metadata,
           sort_order:   items.length,
         });
       }
@@ -219,13 +287,15 @@ export default function AdminGalleryPage() {
     } else {
       if (editingId) {
         updateGalleryItem(editingId, {
-          title: form.title, category: form.category, image: form.image,
+          title: form.title, category: form.category,
+          image: form.image || form.thumbnailUrl,
           location: form.location, featured: form.featured, visible: form.visible,
           caption: form.caption || undefined,
         });
       } else {
         saveGalleryItem({
-          title: form.title, category: form.category, image: form.image,
+          title: form.title, category: form.category,
+          image: form.image || form.thumbnailUrl || "",
           location: form.location, year: form.year,
           tags: form.tags.split(",").map((t) => t.trim()).filter(Boolean),
           featured: form.featured, visible: form.visible,
@@ -264,7 +334,7 @@ export default function AdminGalleryPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold" style={{ fontFamily: "var(--font-display)" }}>Gallery Management</h1>
-          <p className="text-sm" style={{ color: "#A7A7B3" }}>{items.length} item{items.length !== 1 ? "s" : ""}</p>
+          <p className="text-sm" style={{ color: "#A7A7B3" }}>{items.length} item{items.length !== 1 ? "s" : ""} · Supports images &amp; videos</p>
         </div>
         <div className="flex gap-3">
           <button onClick={load} className="p-2 rounded-lg glass-card" style={{ color: "#D6A84F" }}><RefreshCw size={15} /></button>
@@ -275,9 +345,42 @@ export default function AdminGalleryPage() {
           >
             <LinkIcon size={14} /> Instagram
           </button>
-          <button onClick={() => { if (showForm && !editingId) { closeForm(); } else { closeForm(); setShowForm(true); setShowIgForm(false); } }} className="btn-gold inline-flex items-center gap-2"><Plus size={15} /> Add Photo</button>
+          <button
+            onClick={() => fileRef.current?.click()}
+            className="px-3 py-2 rounded-lg text-sm font-medium inline-flex items-center gap-2 border transition-[background] duration-150"
+            style={{ borderColor: "rgba(214,168,79,0.3)", color: "#D6A84F" }}
+            disabled={uploading}
+          >
+            <Upload size={14} /> Bulk Upload
+          </button>
+          <button
+            onClick={() => { if (showForm && !editingId) { closeForm(); } else { closeForm(); setShowForm(true); setShowIgForm(false); } }}
+            className="btn-gold inline-flex items-center gap-2"
+          >
+            <Plus size={15} /> Add Media
+          </button>
         </div>
       </div>
+
+      {/* Hidden bulk file input */}
+      <input
+        ref={fileRef}
+        type="file"
+        accept={ACCEPTED_TYPES}
+        multiple
+        className="hidden"
+        onChange={handleFileChange}
+      />
+
+      {uploadProgress && (
+        <div
+          className="px-4 py-3 rounded-xl text-sm flex items-center gap-3"
+          style={{ background: "rgba(214,168,79,0.08)", border: "1px solid rgba(214,168,79,0.2)", color: "#D6A84F" }}
+        >
+          <div className="w-4 h-4 rounded-full border-2 border-[#D6A84F] border-t-transparent animate-spin shrink-0" />
+          {uploadProgress}
+        </div>
+      )}
 
       {/* Instagram manual import form */}
       {showIgForm && (
@@ -287,9 +390,6 @@ export default function AdminGalleryPage() {
             <h3 className="font-bold" style={{ fontFamily: "var(--font-display)" }}>Import Instagram Post</h3>
             <span className="ml-auto text-xs px-2 py-0.5 rounded-full" style={{ background: "rgba(242,153,74,0.12)", color: "#F2994A" }}>Manual — paste image URL</span>
           </div>
-          <p className="text-xs" style={{ color: "#5A5A6E" }}>
-            Copy the image URL from Instagram (open post → right-click image → Copy image address) and paste it below.
-          </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="sm:col-span-2">
               <label className="block text-xs mb-1" style={{ color: "#A7A7B3" }}>Image URL *</label>
@@ -380,6 +480,25 @@ export default function AdminGalleryPage() {
               <X size={16} />
             </button>
           </div>
+
+          {/* Media type toggle */}
+          <div className="flex gap-2">
+            {(["image", "video"] as const).map((t) => (
+              <button
+                key={t}
+                onClick={() => setForm((f) => ({ ...f, mediaType: t }))}
+                className="px-4 py-1.5 rounded-full text-xs font-medium capitalize transition-[background,color] duration-150"
+                style={{
+                  background: form.mediaType === t ? "rgba(214,168,79,0.2)" : "rgba(255,255,255,0.04)",
+                  color: form.mediaType === t ? "#D6A84F" : "#A7A7B3",
+                  border: `1px solid ${form.mediaType === t ? "rgba(214,168,79,0.4)" : "rgba(255,255,255,0.07)"}`,
+                }}
+              >
+                {t === "video" ? "🎬 Video" : "🖼 Image"}
+              </button>
+            ))}
+          </div>
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {[
               { key: "title",    label: "Title *" },
@@ -412,31 +531,57 @@ export default function AdminGalleryPage() {
               </select>
             </div>
             <div>
-              <label className="block text-xs mb-1" style={{ color: "#A7A7B3" }}>Image *</label>
+              <label className="block text-xs mb-1" style={{ color: "#A7A7B3" }}>
+                {form.mediaType === "video" ? "Video URL" : "Image URL"} *
+              </label>
               <div className="flex gap-2">
                 <input
                   type="text"
-                  value={form.image}
-                  onChange={(e) => setForm({ ...form, image: e.target.value })}
+                  value={form.mediaType === "video" ? form.videoUrl : form.image}
+                  onChange={(e) => setForm((f) =>
+                    f.mediaType === "video"
+                      ? { ...f, videoUrl: e.target.value }
+                      : { ...f, image: e.target.value }
+                  )}
                   placeholder="Paste URL or upload →"
                   className="flex-1 bg-[#181824] rounded-lg px-3 py-2 text-sm border outline-none"
                   style={{ color: "#FFF", borderColor: "rgba(214,168,79,0.2)" }}
                 />
-                <button
-                  onClick={() => fileRef.current?.click()}
-                  disabled={uploading}
-                  className="px-3 py-2 rounded-lg text-xs border inline-flex items-center gap-1.5 disabled:opacity-50"
-                  style={{ borderColor: "rgba(214,168,79,0.3)", color: "#D6A84F" }}
+                <label
+                  className="px-3 py-2 rounded-lg text-xs border inline-flex items-center gap-1.5 cursor-pointer"
+                  style={{ borderColor: "rgba(214,168,79,0.3)", color: uploading ? "#5A5A6E" : "#D6A84F" }}
                 >
                   <Upload size={13} />{uploading ? "…" : "Upload"}
-                </button>
-                <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
+                  <input
+                    type="file"
+                    accept={ACCEPTED_TYPES}
+                    className="hidden"
+                    disabled={uploading}
+                    onChange={handleFileChange}
+                  />
+                </label>
               </div>
-              {form.image && (
+              {form.mediaType === "video" && form.videoUrl && (
+                <video src={form.videoUrl} className="mt-2 h-16 rounded object-cover" muted />
+              )}
+              {form.mediaType === "image" && form.image && (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={form.image} alt="preview" className="mt-2 h-16 rounded object-cover" />
               )}
             </div>
+            {form.mediaType === "video" && (
+              <div>
+                <label className="block text-xs mb-1" style={{ color: "#A7A7B3" }}>Thumbnail URL (optional)</label>
+                <input
+                  type="text"
+                  value={form.thumbnailUrl}
+                  onChange={(e) => setForm({ ...form, thumbnailUrl: e.target.value })}
+                  placeholder="Paste thumbnail image URL"
+                  className="w-full bg-[#181824] rounded-lg px-3 py-2 text-sm border outline-none"
+                  style={{ color: "#FFF", borderColor: "rgba(214,168,79,0.2)" }}
+                />
+              </div>
+            )}
             <div className="sm:col-span-2">
               <label className="block text-xs mb-1" style={{ color: "#A7A7B3" }}>Tags (comma-separated)</label>
               <input
@@ -488,57 +633,86 @@ export default function AdminGalleryPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-          {items.map((item) => (
-            <div
-              key={item.id}
-              className="group glass-card rounded-xl overflow-hidden"
-              style={{ opacity: item.visible ? 1 : 0.45 }}
-            >
-              <div className="relative aspect-video overflow-hidden" style={{ background: "#181824" }}>
-                <Image src={item.image} alt={item.title} fill className="object-cover" unoptimized />
-                {item.featured && (
-                  <span
-                    className="absolute top-2 left-2 text-xs px-2 py-0.5 rounded-full font-semibold"
-                    style={{ background: "rgba(214,168,79,0.9)", color: "#050505" }}
-                  >
-                    Featured
-                  </span>
-                )}
-                <div className="absolute top-2 right-2 flex gap-1.5 opacity-0 group-hover:opacity-100 transition-[opacity] duration-200">
-                  <button
-                    onClick={() => openEdit(item)}
-                    className="w-7 h-7 rounded-full flex items-center justify-center"
-                    style={{ background: "rgba(214,168,79,0.9)", color: "#050505" }}
-                    title="Edit"
-                  >
-                    <Pencil size={12} />
-                  </button>
-                  <button
-                    onClick={() => toggleVisible(item.id, item.visible)}
-                    className="w-7 h-7 rounded-full flex items-center justify-center"
-                    style={{ background: "rgba(17,17,24,0.9)", color: item.visible ? "#D6A84F" : "#5A5A6E" }}
-                    title={item.visible ? "Hide" : "Show"}
-                  >
-                    {item.visible ? <Eye size={13} /> : <EyeOff size={13} />}
-                  </button>
-                  <button
-                    onClick={() => handleDelete(item.id)}
-                    className="w-7 h-7 rounded-full flex items-center justify-center"
-                    style={{ background: "rgba(235,87,87,0.9)", color: "#FFF" }}
-                  >
-                    <Trash2 size={13} />
-                  </button>
+          {items.map((item) => {
+            const isVideo = item.mediaType === "video";
+            const thumb   = item.thumbnailUrl ?? item.image ?? "";
+            return (
+              <div
+                key={item.id}
+                className="group glass-card rounded-xl overflow-hidden"
+                style={{ opacity: item.visible ? 1 : 0.45 }}
+              >
+                <div className="relative aspect-video overflow-hidden" style={{ background: "#181824" }}>
+                  {isVideo ? (
+                    <>
+                      {thumb ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={thumb} alt={item.title} className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center" style={{ color: "#3A3A50" }}>
+                          <Play size={32} />
+                        </div>
+                      )}
+                      <div className="absolute inset-0 flex items-center justify-center" style={{ background: "rgba(0,0,0,0.35)" }}>
+                        <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ background: "rgba(214,168,79,0.85)" }}>
+                          <Play size={16} style={{ color: "#050505", marginLeft: 1 }} />
+                        </div>
+                      </div>
+                      <span
+                        className="absolute bottom-2 right-2 text-xs px-2 py-0.5 rounded-full font-semibold"
+                        style={{ background: "rgba(214,168,79,0.9)", color: "#050505" }}
+                      >
+                        Video
+                      </span>
+                    </>
+                  ) : (
+                    <Image src={item.image ?? ""} alt={item.title} fill className="object-cover" unoptimized />
+                  )}
+
+                  {item.featured && (
+                    <span
+                      className="absolute top-2 left-2 text-xs px-2 py-0.5 rounded-full font-semibold"
+                      style={{ background: "rgba(214,168,79,0.9)", color: "#050505" }}
+                    >
+                      Featured
+                    </span>
+                  )}
+                  <div className="absolute top-2 right-2 flex gap-1.5 opacity-0 group-hover:opacity-100 transition-[opacity] duration-200">
+                    <button
+                      onClick={() => openEdit(item)}
+                      className="w-7 h-7 rounded-full flex items-center justify-center"
+                      style={{ background: "rgba(214,168,79,0.9)", color: "#050505" }}
+                      title="Edit"
+                    >
+                      <Pencil size={12} />
+                    </button>
+                    <button
+                      onClick={() => toggleVisible(item.id, item.visible)}
+                      className="w-7 h-7 rounded-full flex items-center justify-center"
+                      style={{ background: "rgba(17,17,24,0.9)", color: item.visible ? "#D6A84F" : "#5A5A6E" }}
+                      title={item.visible ? "Hide" : "Show"}
+                    >
+                      {item.visible ? <Eye size={13} /> : <EyeOff size={13} />}
+                    </button>
+                    <button
+                      onClick={() => handleDelete(item.id)}
+                      className="w-7 h-7 rounded-full flex items-center justify-center"
+                      style={{ background: "rgba(235,87,87,0.9)", color: "#FFF" }}
+                    >
+                      <Trash2 size={13} />
+                    </button>
+                  </div>
+                </div>
+                <div className="p-4">
+                  <p className="text-xs mb-0.5" style={{ color: "#D6A84F" }}>{item.category} · {isVideo ? "Video" : "Image"}</p>
+                  <p className="text-sm font-semibold text-white line-clamp-2">{item.title}</p>
+                  {item.location && (
+                    <p className="text-xs mt-1" style={{ color: "#5A5A6E" }}>📍 {item.location}</p>
+                  )}
                 </div>
               </div>
-              <div className="p-4">
-                <p className="text-xs mb-0.5" style={{ color: "#D6A84F" }}>{item.category}</p>
-                <p className="text-sm font-semibold text-white line-clamp-2">{item.title}</p>
-                {item.location && (
-                  <p className="text-xs mt-1" style={{ color: "#5A5A6E" }}>📍 {item.location}</p>
-                )}
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

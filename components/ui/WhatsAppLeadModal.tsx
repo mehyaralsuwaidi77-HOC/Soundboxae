@@ -2,9 +2,11 @@
 
 import { useState } from "react";
 import { X, MessageCircle, Loader2, ArrowRight } from "lucide-react";
+import { whatsappServiceInquiry } from "@/lib/whatsapp";
 
 interface Props {
   href: string;
+  whatsappNumber?: string;
   className?: string;
   style?: React.CSSProperties;
   children: React.ReactNode;
@@ -40,11 +42,14 @@ const DEFAULT_FORM: FormState = {
   notes: "",
 };
 
-export default function WhatsAppLeadModal({ href, className, style, children, source = "whatsapp_modal", service }: Props) {
+export default function WhatsAppLeadModal({ href, whatsappNumber, className, style, children, source = "whatsapp_modal", service }: Props) {
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<FormState>(DEFAULT_FORM);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+
+  // Extract number from href as fallback
+  const waNumber = whatsappNumber ?? (href.match(/wa\.me\/(\d+)/)?.[1] ?? "971553320051");
 
   function fireAnalytics(eventName: string) {
     fetch("/api/analytics", {
@@ -54,15 +59,33 @@ export default function WhatsAppLeadModal({ href, className, style, children, so
         event_name: eventName,
         event_type: "engagement",
         source,
-        metadata: { service: service ?? null, href },
+        metadata: { service: service ?? null },
       }),
     }).catch(() => {});
+  }
+
+  function buildWaUrl(f: FormState) {
+    return whatsappServiceInquiry(
+      {
+        name:      f.name      || undefined,
+        phone:     f.phone     || undefined,
+        eventType: f.eventType || undefined,
+        eventDate: f.eventDate || undefined,
+        guests:    f.guests    || undefined,
+        notes:     f.notes     || undefined,
+      },
+      waNumber
+    );
   }
 
   function handleSkip() {
     fireAnalytics("whatsapp_click_skipped_lead");
     setOpen(false);
-    window.open(href, "_blank", "noopener,noreferrer");
+    // Use the standard AV quote message for direct skip
+    const quickUrl = `https://wa.me/${waNumber}?text=${encodeURIComponent(
+      "Hi Soundbox Dubai! I'm interested in renting Audio Visual Equipment for my event. Could you please provide availability."
+    )}`;
+    window.open(quickUrl, "_blank", "noopener,noreferrer");
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -75,25 +98,26 @@ export default function WhatsAppLeadModal({ href, className, style, children, so
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          name: form.name.trim(),
-          phone: form.phone.trim(),
-          eventType: form.eventType || service || "General Inquiry",
-          eventDate: form.eventDate || undefined,
-          guests: form.guests ? Number(form.guests) : undefined,
-          services: service ? [service] : [],
-          notes: form.notes.trim() || undefined,
+          name:             form.name.trim(),
+          phone:            form.phone.trim(),
+          eventType:        form.eventType || "Audio Visual Inquiry",
+          eventDate:        form.eventDate || undefined,
+          guests:           form.guests ? Number(form.guests) : undefined,
+          services:         ["Audio Visual"],
+          notes:            form.notes.trim() || undefined,
           source,
-          whatsappSent: true,
+          requestedService: "Audio Visual",
+          whatsappSent:     true,
         }),
       });
       if (!res.ok) {
         const { error: msg } = await res.json().catch(() => ({}));
         throw new Error(msg ?? "Failed to submit");
       }
-      fireAnalytics("whatsapp_lead_created");
+      fireAnalytics("service_inquiry_whatsapp_started");
       setOpen(false);
       setForm(DEFAULT_FORM);
-      window.open(href, "_blank", "noopener,noreferrer");
+      window.open(buildWaUrl(form), "_blank", "noopener,noreferrer");
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
     } finally {
@@ -105,7 +129,7 @@ export default function WhatsAppLeadModal({ href, className, style, children, so
     <>
       <button
         type="button"
-        onClick={() => setOpen(true)}
+        onClick={() => { setOpen(true); fireAnalytics("service_inquiry_started"); }}
         className={className}
         style={style}
       >
@@ -145,15 +169,13 @@ export default function WhatsAppLeadModal({ href, className, style, children, so
 
             <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
               {/* Service pre-fill display */}
-              {service && (
-                <div
-                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm"
-                  style={{ background: "rgba(214,168,79,0.08)", border: "1px solid rgba(214,168,79,0.15)" }}
-                >
-                  <span style={{ color: "#D6A84F" }}>Service:</span>
-                  <span style={{ color: "#FFF" }}>{service}</span>
-                </div>
-              )}
+              <div
+                className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm"
+                style={{ background: "rgba(214,168,79,0.08)", border: "1px solid rgba(214,168,79,0.15)" }}
+              >
+                <span style={{ color: "#D6A84F" }}>Service:</span>
+                <span style={{ color: "#FFF" }}>Audio Visual Equipment</span>
+              </div>
 
               {/* Name + Phone */}
               <div className="grid grid-cols-2 gap-3">
@@ -234,7 +256,7 @@ export default function WhatsAppLeadModal({ href, className, style, children, so
                   rows={2}
                   value={form.notes}
                   onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
-                  placeholder="Venue, special requirements, budget range…"
+                  placeholder="Venue, special requirements…"
                   className="w-full bg-[#181824] rounded-lg px-3 py-2.5 text-sm border outline-none resize-none"
                   style={{ borderColor: "rgba(214,168,79,0.2)", color: "#FFF" }}
                 />
@@ -244,7 +266,6 @@ export default function WhatsAppLeadModal({ href, className, style, children, so
                 <p className="text-xs" style={{ color: "#EB5757" }}>{error}</p>
               )}
 
-              {/* Actions */}
               <div className="flex flex-col gap-2 pt-1">
                 <button
                   type="submit"

@@ -2,8 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { MessageCircle, X, Send, Sparkles, CheckCircle } from "lucide-react";
-import { whatsappBookingRequest } from "@/lib/whatsapp";
-import { saveLead } from "@/lib/storage";
+import { whatsappServiceInquiry } from "@/lib/whatsapp";
 import { useSettings } from "@/components/providers/SettingsProvider";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -11,10 +10,11 @@ import { useSettings } from "@/components/providers/SettingsProvider";
 type Step =
   | "idle"
   | "greeting"
-  | "event-type"
   | "event-date"
-  | "guests"
-  | "services"
+  | "event-location"
+  | "event-type"
+  | "equipment"
+  | "duration"
   | "name"
   | "phone"
   | "notes"
@@ -27,57 +27,94 @@ interface Message {
   waLink?: string;
 }
 
-interface FormData {
-  eventType: string;
+interface BookingData {
   eventDate: string;
-  guests: number;
-  services: string[];
+  eventLocation: string;
+  eventType: string;
+  equipment: string;
+  duration: string;
   name: string;
   phone: string;
   notes: string;
 }
 
-// ── Constants ─────────────────────────────────────────────────────────────────
-
-const EVENT_TYPES = [
-  "Wedding",
-  "Corporate Event",
-  "Concert",
-  "House Party",
-  "Brand Activation",
-  "Private Gathering",
-  "Other",
-];
-
-const SERVICE_OPTIONS = [
-  "Sound System",
-  "Lighting",
-  "LED Screen",
-  "Stage",
-  "DJ Equipment",
-  "Trussing & Rigging",
-  "Full Production Package",
-];
-
-const INITIAL_DATA: FormData = {
-  eventType: "",
-  eventDate: "",
-  guests: 0,
-  services: [],
-  name: "",
-  phone: "",
-  notes: "",
+const EMPTY_DATA: BookingData = {
+  eventDate: "", eventLocation: "", eventType: "", equipment: "",
+  duration: "", name: "", phone: "", notes: "",
 };
 
-// ── Validation helpers ────────────────────────────────────────────────────────
+const EVENT_TYPES = [
+  "Wedding", "Birthday", "Corporate Event", "Concert",
+  "Private Party", "Brand Activation", "Conference", "Other",
+];
 
-function isValidDate(str: string): boolean {
-  const d = new Date(str);
-  return !isNaN(d.getTime()) && d > new Date();
+// ── Intent matching ───────────────────────────────────────────────────────────
+
+interface IntentRule {
+  pattern: RegExp;
+  response: string;
+  trackEvent?: string;
+}
+
+const INTENT_RULES: IntentRule[] = [
+  {
+    pattern: /\b(deliver|delivery|setup|set.?up|install|transport|bring|collect|collection)\b/i,
+    response: "Delivery and setup are included in the price. For locations outside Dubai, a minimum order fee applies depending on the location.",
+  },
+  {
+    pattern: /\b(pay|payment|cash|card|bank.?transfer|tabby|installment|installments|link|online.?pay)\b/i,
+    response: "We accept bank transfer, secure payment links, card payments via our portable card machine, Tabby installment payments (split into 4), and cash payments. Certain payment methods may include additional processing charges.",
+    trackEvent: "faq_view",
+  },
+  {
+    pattern: /\b(cancel|cancellation|refund|money.?back|return)\b/i,
+    response: "If you cancel 48 hours or more before the event, you will receive a 100% full refund. Cancellations made within 48 hours are eligible for a 50% refund only.",
+  },
+  {
+    pattern: /\b(book|booking|deposit|confirm|advance|reserve|reservation|hire)\b/i,
+    response: "Bookings below AED 1,000 require 100% advance payment. Bookings above AED 1,000 require a 50% deposit to confirm, with the remaining 50% paid before setup begins on the event day.\n\nWould you like to make a booking? Type **yes** and I'll collect your event details.",
+  },
+  {
+    pattern: /\b(price|pricing|quotation|quote|cost|package|how.?much|rate)\b/i,
+    response: "Please share your event details with us and our team will provide a customized quotation based on your requirements. Minimum order is AED 500 including setup, delivery, and collection.",
+  },
+  {
+    pattern: /\b(speaker|sound.?system|dj|lighting|light|av|audio.?visual|mic|microphone|screen|led|stage|equipment|gear|truss|rigging)\b/i,
+    response: "We provide professional audio visual rental solutions including sound systems, DJ equipment, lighting, microphones, LED screens, staging, trusses, rigging, and full event production services.",
+  },
+  {
+    pattern: /\b(dubai|abu.?dhabi|sharjah|ajman|uae|outside.?dubai|emirates|rak|fujairah)\b/i,
+    response: "We provide services across the UAE including Dubai, Abu Dhabi, Sharjah, Ajman, and surrounding emirates. Additional transportation charges may apply depending on your event location.",
+  },
+  {
+    pattern: /\b(minimum|min.?order|min order|aed|500)\b/i,
+    response: "Our minimum order is AED 500, which includes setup, delivery, and collection.",
+  },
+  {
+    pattern: /\b(instagram|facebook|social|follow)\b/i,
+    response: "You can follow us on Instagram @soundboxdubai to see our latest events and setups. Our team is also available via WhatsApp and Email for inquiries.",
+  },
+];
+
+function matchIntent(text: string): IntentRule | null {
+  for (const rule of INTENT_RULES) {
+    if (rule.pattern.test(text)) return rule;
+  }
+  return null;
+}
+
+function isBookingIntent(text: string): boolean {
+  return /\b(book|booking|reserve|reservation|confirm|hire|yes|yeah|sure|ok|yep|please|start)\b/i.test(text);
+}
+
+function isOffTopic(text: string): boolean {
+  const offTopicPatterns = [
+    /\b(weather|recipe|cook|football|sport|news|politics|joke|movie|film|music.?recommend|stock|crypto|bitcoin)\b/i,
+  ];
+  return offTopicPatterns.some((p) => p.test(text));
 }
 
 function isValidPhone(str: string): boolean {
-  // Accept UAE/international formats: +971..., 05..., 00971...
   return /^(\+|00)?[1-9]\d{6,14}$/.test(str.replace(/[\s\-().]/g, ""));
 }
 
@@ -148,12 +185,12 @@ function WaButton({ link }: { link: string }) {
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function AIChat() {
-  const { whatsappNumber, phoneDisplay } = useSettings();
+  const { whatsappNumber } = useSettings();
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState<Step>("idle");
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
-  const [data, setData] = useState<FormData>(INITIAL_DATA);
+  const [data, setData] = useState<BookingData>(EMPTY_DATA);
   const [isTyping, setIsTyping] = useState(false);
   const [inputError, setInputError] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -162,12 +199,12 @@ export default function AIChat() {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isTyping]);
 
-  const addBot = useCallback((text: string, delay = 0) => {
-    return new Promise<void>((resolve) => {
+  const addBot = useCallback((text: string): Promise<void> => {
+    return new Promise((resolve) => {
       setTimeout(() => {
         setMessages((prev) => [...prev, { role: "bot", text }]);
         resolve();
-      }, delay);
+      }, 0);
     });
   }, []);
 
@@ -175,21 +212,24 @@ export default function AIChat() {
     setMessages((prev) => [...prev, { role: "user", text }]);
   }, []);
 
+  function fireAnalytics(name: string) {
+    fetch("/api/analytics", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ event_name: name, event_type: "chat", source: "ai_chat" }),
+    }).catch(() => {});
+  }
+
   function startChat() {
     setStep("greeting");
     setMessages([]);
-    setData(INITIAL_DATA);
+    setData(EMPTY_DATA);
     setInputError("");
+    fireAnalytics("ai_chat_started");
     setTimeout(() => {
       setMessages([
-        { role: "bot", text: "👋 Welcome to Soundbox Dubai! I'm your event assistant." },
+        { role: "bot", text: "👋 Welcome to Soundbox Dubai! I'm your event assistant.\n\nHow can I help you today? You can:\n• Ask about our services, payment, delivery, or cancellation\n• Type **book** to start a booking request" },
       ]);
-      setTimeout(() => {
-        setMessages((prev) => [
-          ...prev,
-          { role: "bot", text: "Would you like to create a booking request?\n\nType **yes** to start, or **no** if you have a different question." },
-        ]);
-      }, 600);
     }, 200);
   }
 
@@ -202,184 +242,196 @@ export default function AIChat() {
     setIsTyping(true);
     setInputError("");
 
-    await new Promise((r) => setTimeout(r, 450));
+    await new Promise((r) => setTimeout(r, 380));
 
-    switch (step) {
-      case "greeting": {
-        if (/yes|yeah|sure|ok|yep|please|y\b/i.test(text)) {
-          setStep("event-type");
-          await addBot("What type of event is it?");
-        } else if (/no|n\b|nope/i.test(text)) {
-          await addBot(
-            `No problem! You can reach us anytime on WhatsApp (${phoneDisplay}) or browse our services at soundboxdubai.com 😊`
-          );
-        } else {
-          await addBot(
-            "Please type **yes** to create a booking request, or **no** if you'd like to explore another way to reach us."
-          );
-          setStep("greeting");
-        }
-        break;
+    if (step === "greeting") {
+      // Check off-topic first
+      if (isOffTopic(text)) {
+        await addBot("Thank you for contacting us. For event-related inquiries, please let us know your requirements and our team will assist you.");
+        setIsTyping(false);
+        return;
       }
 
-      case "event-type": {
-        if (!text || text.length < 2) {
-          setInputError("Please enter your event type.");
-          break;
-        }
-        setData((d) => ({ ...d, eventType: text }));
+      // Intent matching
+      const matched = matchIntent(text);
+      if (matched) {
+        if (matched.trackEvent) fireAnalytics(matched.trackEvent);
+        await addBot(matched.response);
+        await new Promise((r) => setTimeout(r, 200));
+        await addBot("Is there anything else I can help you with? Type **book** to start a booking request, or ask another question.");
+        setIsTyping(false);
+        return;
+      }
+
+      // Booking intent
+      if (isBookingIntent(text)) {
         setStep("event-date");
-        await addBot(`Great choice! 🎉\n\nWhat is the date of your event? (e.g. 20 August 2025)`);
-        break;
+        await addBot("To confirm your booking, I'll need a few details.\n\nWhat is the date of your event?");
+        setIsTyping(false);
+        return;
       }
 
-      case "event-date": {
-        if (!isValidDate(text)) {
-          setInputError("Please enter a valid future date (e.g. 20 August 2025).");
-          break;
-        }
-        setData((d) => ({ ...d, eventDate: text }));
-        setStep("guests");
-        await addBot(`Perfect. How many guests or people will attend?`);
-        break;
+      // Default fallback
+      await addBot("Thank you for reaching out! Our team specialises in audio visual equipment rental for all types of events.\n\nYou can ask me about:\n• Delivery and setup\n• Payment methods\n• Cancellation policy\n• Our services\n\nOr type **book** to start a booking request.");
+      setIsTyping(false);
+      return;
+    }
+
+    // ── Booking flow ──────────────────────────────────────────────────────────
+
+    if (step === "event-date") {
+      if (!text || text.trim().length < 2) {
+        setInputError("Please enter your event date.");
+        setIsTyping(false);
+        return;
       }
+      setData((d) => ({ ...d, eventDate: text.trim() }));
+      setStep("event-location");
+      await addBot("What is the event location or venue?");
+      setIsTyping(false);
+      return;
+    }
 
-      case "guests": {
-        const n = parseInt(text.replace(/[^\d]/g, ""), 10);
-        if (isNaN(n) || n < 1 || n > 100000) {
-          setInputError("Please enter a valid number of guests (e.g. 150).");
-          break;
-        }
-        setData((d) => ({ ...d, guests: n }));
-        setStep("services");
-        await addBot(
-          "Which services do you need? You can select options or type your own:\n\n" +
-          SERVICE_OPTIONS.map((s, i) => `${i + 1}. ${s}`).join("\n")
-        );
-        break;
+    if (step === "event-location") {
+      if (!text || text.trim().length < 2) {
+        setInputError("Please enter the event location.");
+        setIsTyping(false);
+        return;
       }
+      setData((d) => ({ ...d, eventLocation: text.trim() }));
+      setStep("event-type");
+      await addBot("What type of event is it? (e.g. Wedding, Birthday, Corporate, Private Party)");
+      setIsTyping(false);
+      return;
+    }
 
-      case "services": {
-        if (!text || text.length < 2) {
-          setInputError("Please specify at least one service.");
-          break;
-        }
-        const selected: string[] = [];
-        SERVICE_OPTIONS.forEach((s, i) => {
-          if (
-            text.includes(String(i + 1)) ||
-            text.toLowerCase().includes(s.toLowerCase().split(" ")[0])
-          ) {
-            selected.push(s);
-          }
-        });
-        const srv = selected.length ? selected : [text];
-        setData((d) => ({ ...d, services: srv }));
-        setStep("name");
-        await addBot("Great selections! What is your **full name**?");
-        break;
+    if (step === "event-type") {
+      if (!text || text.trim().length < 2) {
+        setInputError("Please enter your event type.");
+        setIsTyping(false);
+        return;
       }
+      setData((d) => ({ ...d, eventType: text.trim() }));
+      setStep("equipment");
+      await addBot("What equipment or services do you require?\n(e.g. Sound system, Lighting, LED Screen, Stage, DJ Equipment, Full Production)");
+      setIsTyping(false);
+      return;
+    }
 
-      case "name": {
-        if (!text || text.trim().length < 2) {
-          setInputError("Please enter your full name.");
-          break;
-        }
-        setData((d) => ({ ...d, name: text.trim() }));
-        setStep("phone");
-        await addBot(`Nice to meet you, ${text.trim().split(" ")[0]}! 👋\n\nWhat is your phone or WhatsApp number so our team can reach you?`);
-        break;
+    if (step === "equipment") {
+      if (!text || text.trim().length < 2) {
+        setInputError("Please describe the equipment or services needed.");
+        setIsTyping(false);
+        return;
       }
+      setData((d) => ({ ...d, equipment: text.trim() }));
+      setStep("duration");
+      await addBot("How long is the rental / event duration? (e.g. 4 hours, 1 day)");
+      setIsTyping(false);
+      return;
+    }
 
-      case "phone": {
-        if (!isValidPhone(text)) {
-          setInputError("Please enter a valid phone number (e.g. +971501234567 or 05XXXXXXXX).");
-          break;
-        }
-        setData((d) => ({ ...d, phone: text.trim() }));
-        setStep("notes");
-        await addBot("Almost done! Any extra notes or special requirements for your event? (Type **skip** if none)");
-        break;
+    if (step === "duration") {
+      if (!text || text.trim().length < 1) {
+        setInputError("Please enter the duration.");
+        setIsTyping(false);
+        return;
       }
+      setData((d) => ({ ...d, duration: text.trim() }));
+      setStep("name");
+      await addBot("What is your full name?");
+      setIsTyping(false);
+      return;
+    }
 
-      case "notes": {
-        const notes = /^skip$/i.test(text.trim()) ? "" : text.trim();
-        const finalData = { ...data, notes };
-        setData(finalData);
-        setStep("done");
+    if (step === "name") {
+      if (!text || text.trim().length < 2) {
+        setInputError("Please enter your name.");
+        setIsTyping(false);
+        return;
+      }
+      setData((d) => ({ ...d, name: text.trim() }));
+      setStep("phone");
+      await addBot(`Nice to meet you, ${text.trim().split(" ")[0]}! 👋\n\nWhat is your phone or WhatsApp number?`);
+      setIsTyping(false);
+      return;
+    }
 
-        // Save to localStorage
-        try {
-          saveLead({
-            name: finalData.name,
-            phone: finalData.phone,
-            eventType: finalData.eventType,
-            eventDate: finalData.eventDate,
-            guests: finalData.guests,
-            services: finalData.services,
-            notes: finalData.notes,
-            source: "ai-chat",
-          });
-        } catch {
-          // Silent fail — localStorage may be unavailable
-        }
+    if (step === "phone") {
+      if (!isValidPhone(text)) {
+        setInputError("Please enter a valid phone number (e.g. +971501234567 or 0501234567).");
+        setIsTyping(false);
+        return;
+      }
+      setData((d) => ({ ...d, phone: text.trim() }));
+      setStep("notes");
+      await addBot("Any additional notes or requirements? (Type **skip** if none)");
+      setIsTyping(false);
+      return;
+    }
 
-        // Submit to API (best-effort)
-        try {
-          fetch("/api/leads", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              name: finalData.name,
-              phone: finalData.phone,
-              eventType: finalData.eventType,
-              eventDate: finalData.eventDate,
-              guests: finalData.guests,
-              services: finalData.services,
-              notes: finalData.notes,
-              source: "ai-chat",
-            }),
-          }).catch(() => {});
-        } catch {
-          // Ignore API errors — lead is already saved to localStorage
-        }
+    if (step === "notes") {
+      const notes = /^skip$/i.test(text.trim()) ? "" : text.trim();
+      const finalData = { ...data, notes };
+      setData(finalData);
+      setStep("done");
 
-        // Track analytics event (best-effort)
-        fetch("/api/analytics", {
+      // Save lead to API
+      try {
+        await fetch("/api/leads", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            event_name: "ai_chat_completed",
-            event_type: "chat",
-            metadata: { eventType: finalData.eventType, services: finalData.services },
+            name:      finalData.name,
+            phone:     finalData.phone,
+            eventType: finalData.eventType,
+            eventDate: finalData.eventDate,
+            services:  finalData.equipment ? [finalData.equipment] : ["Audio Visual"],
+            notes:     [
+              finalData.eventLocation ? `Location: ${finalData.eventLocation}` : "",
+              finalData.duration      ? `Duration: ${finalData.duration}`       : "",
+              finalData.notes,
+            ].filter(Boolean).join(" | "),
+            source: "ai_chat",
           }),
-        }).catch(() => {});
+        });
+      } catch {
+        // Silent fail
+      }
 
-        await addBot(
-          `Thank you, ${finalData.name}! ✅\n\nYour booking request has been received:\n\n📅 Date: ${finalData.eventDate}\n🎉 Event: ${finalData.eventType}\n👥 Guests: ${finalData.guests}\n🎛️ Services: ${finalData.services.join(", ")}\n📞 Phone: ${finalData.phone}\n\nOur team will review your request and contact you shortly.`
-        );
+      fireAnalytics("ai_chat_completed");
 
-        const waLink = whatsappBookingRequest({
+      await addBot(
+        `Thank you, ${finalData.name}! ✅\n\nYour booking request has been received:\n\n📅 Date: ${finalData.eventDate}\n📍 Location: ${finalData.eventLocation}\n🎉 Event: ${finalData.eventType}\n🎛️ Equipment: ${finalData.equipment}\n⏱️ Duration: ${finalData.duration}\n📞 Phone: ${finalData.phone}${finalData.notes ? `\n📝 Notes: ${finalData.notes}` : ""}\n\nOur team will review your request and contact you shortly.`
+      );
+
+      const waLink = whatsappServiceInquiry(
+        {
+          name:      finalData.name,
+          phone:     finalData.phone,
           eventType: finalData.eventType,
-          date: finalData.eventDate,
-          guests: finalData.guests,
-          services: finalData.services,
-        }, whatsappNumber);
+          eventDate: finalData.eventDate,
+          notes:     [
+            finalData.eventLocation ? `Location: ${finalData.eventLocation}` : "",
+            finalData.duration      ? `Duration: ${finalData.duration}`       : "",
+            finalData.notes,
+          ].filter(Boolean).join(" | "),
+        },
+        whatsappNumber
+      );
 
+      setTimeout(() => {
+        setMessages((prev) => [
+          ...prev,
+          { role: "bot", text: "You can also send us this request directly via WhatsApp:" },
+        ]);
         setTimeout(() => {
           setMessages((prev) => [
             ...prev,
-            { role: "bot", text: "You can also send us this request directly via WhatsApp:", isWaLink: false },
+            { role: "bot", text: "", isWaLink: true, waLink },
           ]);
-          setTimeout(() => {
-            setMessages((prev) => [
-              ...prev,
-              { role: "bot", text: "", isWaLink: true, waLink },
-            ]);
-          }, 400);
-        }, 700);
-        break;
-      }
+        }, 400);
+      }, 700);
     }
 
     setIsTyping(false);
@@ -406,7 +458,7 @@ export default function AIChat() {
         }}
         onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.transform = "scale(1.1)"; }}
         onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.transform = "scale(1)"; }}
-        aria-label={open ? "Close booking assistant" : "Open booking assistant"}
+        aria-label={open ? "Close assistant" : "Open booking assistant"}
       >
         {open ? <X size={21} /> : <MessageCircle size={21} />}
       </button>
@@ -439,7 +491,7 @@ export default function AIChat() {
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold text-white leading-none">Soundbox Assistant</p>
-              <p className="text-[11px] mt-0.5" style={{ color: "#D6A84F" }}>● Online · Book your event</p>
+              <p className="text-[11px] mt-0.5" style={{ color: "#D6A84F" }}>● Online · AV Rental Inquiries</p>
             </div>
             <button
               onClick={() => setOpen(false)}
@@ -475,14 +527,14 @@ export default function AIChat() {
                   style={{ background: "rgba(214,168,79,0.07)", border: "1px solid rgba(214,168,79,0.14)" }}
                 >
                   <span className="inline-flex gap-1">
-                    {[0, 1, 2].map((i) => (
+                    {[0, 1, 2].map((j) => (
                       <span
-                        key={i}
+                        key={j}
                         className="w-1.5 h-1.5 rounded-full"
                         style={{
                           background: "#D6A84F",
                           opacity: 0.5,
-                          animation: `bounce 1s ease-in-out ${i * 0.15}s infinite`,
+                          animation: `bounce 1s ease-in-out ${j * 0.15}s infinite`,
                           display: "inline-block",
                         }}
                       />
@@ -495,7 +547,7 @@ export default function AIChat() {
             <div ref={bottomRef} />
           </div>
 
-          {/* Quick picks for event-type */}
+          {/* Quick event-type chips in booking flow */}
           {step === "event-type" && !isTyping && (
             <div className="px-4 pb-3 flex flex-wrap gap-1.5 shrink-0">
               {EVENT_TYPES.map((t) => (
@@ -513,25 +565,6 @@ export default function AIChat() {
             </div>
           )}
 
-          {/* Service quick picks */}
-          {step === "services" && !isTyping && (
-            <div className="px-4 pb-3 flex flex-wrap gap-1.5 shrink-0">
-              {SERVICE_OPTIONS.map((s, i) => (
-                <button
-                  key={s}
-                  onClick={() => handleSend(String(i + 1))}
-                  className="text-[11.5px] px-2.5 py-1.5 rounded-full border transition-[background,color] duration-150"
-                  style={{ borderColor: "rgba(214,168,79,0.2)", color: "#A7A7B3" }}
-                  onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "rgba(214,168,79,0.08)"; (e.currentTarget as HTMLElement).style.color = "#D6A84F"; }}
-                  onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "transparent"; (e.currentTarget as HTMLElement).style.color = "#A7A7B3"; }}
-                >
-                  {s}
-                </button>
-              ))}
-            </div>
-          )}
-
-          {/* Input error */}
           {inputError && (
             <div className="px-4 pb-1 shrink-0">
               <p className="text-[11.5px]" style={{ color: "#EB5757" }}>{inputError}</p>
@@ -545,14 +578,15 @@ export default function AIChat() {
               style={{ borderColor: "rgba(214,168,79,0.1)" }}
             >
               <input
-                type={step === "phone" ? "tel" : step === "event-date" ? "text" : "text"}
+                type={step === "phone" ? "tel" : "text"}
                 value={input}
                 onChange={(e) => { setInput(e.target.value); setInputError(""); }}
                 onKeyDown={(e) => e.key === "Enter" && !isTyping && handleSend()}
                 placeholder={
-                  step === "phone" ? "+971 50 123 4567" :
-                  step === "event-date" ? "e.g. 20 August 2025" :
-                  step === "guests" ? "e.g. 200" :
+                  step === "phone"          ? "+971 50 123 4567" :
+                  step === "event-date"     ? "e.g. 20 August 2025" :
+                  step === "event-location" ? "e.g. Jumeirah, Dubai" :
+                  step === "duration"       ? "e.g. 5 hours" :
                   "Type your reply…"
                 }
                 className="flex-1 bg-transparent text-sm outline-none placeholder:text-[#3A3A50]"

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { CheckCircle, MessageCircle, ArrowLeft } from "lucide-react";
+import { CheckCircle, MessageCircle, ArrowLeft, Mail } from "lucide-react";
 import SiteShell from "@/components/layout/SiteShell";
 import WhatsAppLeadModal from "@/components/ui/WhatsAppLeadModal";
 import { services, getServiceBySlug } from "@/data/services";
@@ -44,6 +44,7 @@ export default async function ServicePage({ params }: Props) {
   };
 
   const others = services.filter((s) => s.slug !== slug).slice(0, 4);
+  const waHref = whatsappInquiry(service.title, settings.whatsappNumber);
 
   return (
     <SiteShell>
@@ -56,7 +57,6 @@ export default async function ServicePage({ params }: Props) {
         className="relative pt-36 pb-20 overflow-hidden"
         style={{ background: "#050505" }}
       >
-        {/* Category BG image as hero background */}
         <div className="absolute inset-0">
           <Image
             src={service.bgImage}
@@ -74,7 +74,6 @@ export default async function ServicePage({ params }: Props) {
           />
         </div>
 
-        {/* Glow overlay */}
         <div
           className="absolute inset-0 pointer-events-none"
           style={{
@@ -104,17 +103,22 @@ export default async function ServicePage({ params }: Props) {
             </p>
             <div className="flex flex-wrap gap-3">
               <WhatsAppLeadModal
-                href={whatsappInquiry(service.title, settings.whatsappNumber)}
+                href={waHref}
+                whatsappNumber={settings.whatsappNumber}
                 className="btn-gold inline-flex items-center gap-2"
-                source="service_page"
-                service={service.title}
+                source="service_inquiry"
+                service="Audio Visual"
               >
                 <MessageCircle size={15} />
                 Inquire Now
               </WhatsAppLeadModal>
-              <Link href="/products" className="btn-ghost">
-                Browse Equipment
-              </Link>
+              <a
+                href="mailto:info@soundboxdubai.com"
+                className="btn-ghost inline-flex items-center gap-2"
+              >
+                <Mail size={15} />
+                Email Us
+              </a>
             </div>
           </div>
         </div>
@@ -154,7 +158,6 @@ export default async function ServicePage({ params }: Props) {
               </ul>
             </div>
 
-            {/* Category BG image */}
             <div className="rounded-xl aspect-video overflow-hidden relative">
               <Image
                 src={service.bgImage}
@@ -172,7 +175,6 @@ export default async function ServicePage({ params }: Props) {
 
           {/* Sidebar */}
           <div className="space-y-6">
-            {/* Use cases */}
             <div className="glass-card rounded-xl p-6">
               <h3
                 className="text-lg font-bold mb-4"
@@ -210,14 +212,23 @@ export default async function ServicePage({ params }: Props) {
               <p className="text-sm mb-4" style={{ color: "#A7A7B3" }}>
                 Contact our team for a custom quote tailored to your event.
               </p>
-              <WhatsAppLeadModal
-                href={whatsappInquiry(service.title, settings.whatsappNumber)}
-                className="btn-gold w-full block text-center"
-                source="service_sidebar"
-                service={service.title}
-              >
-                WhatsApp Us
-              </WhatsAppLeadModal>
+              <div className="space-y-2">
+                <WhatsAppLeadModal
+                  href={waHref}
+                  whatsappNumber={settings.whatsappNumber}
+                  className="btn-gold w-full block text-center"
+                  source="service_sidebar"
+                  service="Audio Visual"
+                >
+                  WhatsApp Us
+                </WhatsAppLeadModal>
+                <a
+                  href="mailto:info@soundboxdubai.com"
+                  className="btn-ghost w-full flex items-center justify-center gap-2 text-sm"
+                >
+                  <Mail size={14} /> Email Us
+                </a>
+              </div>
             </div>
           </div>
         </div>

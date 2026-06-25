@@ -15,6 +15,7 @@ import { whatsappGeneral } from "@/lib/whatsapp";
 import { getSiteSettings } from "@/lib/site-settings";
 
 const INSTAGRAM_URL = "https://www.instagram.com/soundboxdubai/";
+const EMAIL_ADDRESS = "info@soundboxdubai.com";
 
 const serviceLinks = [
   { label: "Audio Systems", href: "/services/audio-systems" },
@@ -30,12 +31,10 @@ const serviceLinks = [
 
 const quickLinks = [
   { label: "Home", href: "/" },
-  { label: "Products & Bundles", href: "/products" },
   { label: "Gallery", href: "/gallery" },
   { label: "Our Clients", href: "/clients" },
   { label: "About Us", href: "/about-us" },
   { label: "FAQ", href: "/faq" },
-  { label: "Track Your Booking", href: "/tracking" },
   { label: "Admin", href: "/admin" },
 ];
 
@@ -84,6 +83,16 @@ export default async function Footer() {
               >
                 <InstagramIcon size={15} />
                 Instagram
+              </a>
+            </div>
+            <div className="mt-3">
+              <a
+                href={`mailto:${EMAIL_ADDRESS}`}
+                className="inline-flex items-center gap-2 text-sm transition-[color] duration-150 hover:text-white"
+                style={{ color: "#A7A7B3" }}
+              >
+                <Mail size={14} style={{ color: "#D6A84F" }} />
+                {EMAIL_ADDRESS}
               </a>
             </div>
           </div>
@@ -162,11 +171,11 @@ export default async function Footer() {
               <li className="flex items-center gap-3">
                 <Mail size={16} style={{ color: "#D6A84F", flexShrink: 0 }} />
                 <a
-                  href="mailto:info@soundboxdubai.com"
+                  href={`mailto:${EMAIL_ADDRESS}`}
                   className="text-sm transition-[color] duration-150 hover:text-white"
                   style={{ color: "#A7A7B3" }}
                 >
-                  info@soundboxdubai.com
+                  {EMAIL_ADDRESS}
                 </a>
               </li>
               <li className="flex items-center gap-3">
@@ -193,7 +202,7 @@ export default async function Footer() {
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-3">
           <p className="text-xs" style={{ color: "#5A5A6E" }}>
-            © {new Date().getFullYear()} Soundbox Electronic Equipment Rental LLC. All rights reserved.
+            © {new Date().getFullYear()} Soundbox Electronic Equipment Rental. All rights reserved.
           </p>
           <p className="text-xs" style={{ color: "#5A5A6E" }}>
             Dubai, United Arab Emirates · AV Rental · Event Production
