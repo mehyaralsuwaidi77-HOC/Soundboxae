@@ -67,6 +67,7 @@ export default function AdminGalleryPage() {
   const [igLoading, setIgLoading]   = useState(false);
   const [igError, setIgError]       = useState<string | null>(null);
   const [loading, setLoading]       = useState(true);
+  const [saveError, setSaveError]   = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   async function load() {
@@ -162,7 +163,7 @@ export default function AdminGalleryPage() {
 
             await supabase.from("gallery_items").insert({
               title:        file.name.replace(/\.[^.]+$/, "").replace(/_/g, " "),
-              image_url:    result.isVideo ? null : result.url,
+              image_url:    result.isVideo ? "" : result.url,
               video_url:    result.isVideo ? result.url : null,
               media_type:   result.isVideo ? "video" : "image",
               storage_path: result.path,
@@ -243,6 +244,7 @@ export default function AdminGalleryPage() {
 
   async function handleSave() {
     if (!form.title || (!form.image && !form.videoUrl)) return;
+    setSaveError(null);
     if (isSupabaseConfigured) {
       const { data: section } = await supabase
         .from("gallery_sections")
@@ -258,7 +260,9 @@ export default function AdminGalleryPage() {
 
       const payload = {
         title:        form.title,
-        image_url:    form.mediaType === "image"  ? form.image    : null,
+        // video items use empty string for image_url to satisfy NOT NULL constraint
+        // (migration 004 drops that constraint; this fallback handles pre-migration state too)
+        image_url:    form.mediaType === "image"  ? form.image    : "",
         video_url:    form.mediaType === "video"  ? form.videoUrl : null,
         thumbnail_url: form.thumbnailUrl || null,
         media_type:   form.mediaType,
@@ -271,17 +275,19 @@ export default function AdminGalleryPage() {
       };
 
       if (editingId) {
-        await supabase.from("gallery_items").update({
+        const { error } = await supabase.from("gallery_items").update({
           ...payload,
           ...(form.storagePath ? { storage_path: form.storagePath } : {}),
         }).eq("id", editingId);
+        if (error) { setSaveError(error.message); return; }
       } else {
-        await supabase.from("gallery_items").insert({
+        const { error } = await supabase.from("gallery_items").insert({
           ...payload,
           storage_path: form.storagePath || null,
           source:       "admin",
           sort_order:   items.length,
         });
+        if (error) { setSaveError(error.message); return; }
       }
       await load();
     } else {
@@ -614,6 +620,11 @@ export default function AdminGalleryPage() {
               </label>
             </div>
           </div>
+          {saveError && (
+            <p className="text-xs px-3 py-2 rounded-lg" style={{ background: "rgba(235,87,87,0.1)", color: "#EB5757", border: "1px solid rgba(235,87,87,0.2)" }}>
+              Save failed: {saveError}
+            </p>
+          )}
           <div className="flex gap-3">
             <button onClick={handleSave} className="btn-gold">
               {editingId ? "Save Changes" : "Add Item"}
