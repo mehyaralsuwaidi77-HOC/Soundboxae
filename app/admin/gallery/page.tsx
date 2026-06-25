@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import Image from "next/image";
 import { Plus, Trash2, Eye, EyeOff, Upload, RefreshCw, Link as LinkIcon, Pencil, X, Play } from "lucide-react";
-import { galleryItems as defaultItems, galleryCategories } from "@/data/gallery";
+import { galleryItems as defaultItems } from "@/data/gallery";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase/client";
 import {
   getAdminGallery, saveGalleryItem, updateGalleryItem, deleteGalleryItem,
@@ -582,19 +582,6 @@ export default function AdminGalleryPage() {
               />
             </div>
             <div>
-              <label className="block text-xs mb-1" style={{ color: "#A7A7B3" }}>Category</label>
-              <select
-                value={igForm.category}
-                onChange={(e) => setIgForm({ ...igForm, category: e.target.value })}
-                className="w-full bg-[#181824] rounded-lg px-3 py-2 text-sm border outline-none"
-                style={{ color: "#FFF", borderColor: "rgba(214,168,79,0.2)" }}
-              >
-                {galleryCategories.filter((c) => c.value !== "all").map((c) => (
-                  <option key={c.value} value={c.value}>{c.label}</option>
-                ))}
-              </select>
-            </div>
-            <div>
               <label className="block text-xs mb-1" style={{ color: "#A7A7B3" }}>Event Date</label>
               <input
                 type="date"
@@ -670,19 +657,6 @@ export default function AdminGalleryPage() {
                 />
               </div>
             ))}
-            <div>
-              <label className="block text-xs mb-1" style={{ color: "#A7A7B3" }}>Category</label>
-              <select
-                value={form.category}
-                onChange={(e) => setForm({ ...form, category: e.target.value })}
-                className="w-full bg-[#181824] rounded-lg px-3 py-2 text-sm border outline-none"
-                style={{ color: "#FFF", borderColor: "rgba(214,168,79,0.2)" }}
-              >
-                {galleryCategories.filter((c) => c.value !== "all").map((c) => (
-                  <option key={c.value} value={c.value}>{c.label}</option>
-                ))}
-              </select>
-            </div>
             <div>
               <label className="block text-xs mb-1" style={{ color: "#A7A7B3" }}>
                 {form.mediaType === "video" ? "Video URL" : "Image URL"} *
@@ -910,7 +884,7 @@ export default function AdminGalleryPage() {
                   </div>
                 </div>
                 <div className="p-4">
-                  <p className="text-xs mb-0.5" style={{ color: "#D6A84F" }}>{item.category} · {isVideo ? "Video" : "Image"}</p>
+                  <p className="text-xs mb-0.5" style={{ color: "#D6A84F" }}>{isVideo ? "Video" : "Image"}</p>
                   <p className="text-sm font-semibold text-white line-clamp-2">{item.title}</p>
                   {item.location && (
                     <p className="text-xs mt-1" style={{ color: "#5A5A6E" }}>📍 {item.location}</p>
