@@ -136,10 +136,21 @@ export default function AdminGalleryPage() {
       video.playsInline = true;
       const objectUrl = URL.createObjectURL(videoFile);
       video.src = objectUrl;
-      const cleanup = () => URL.revokeObjectURL(objectUrl);
+
+      let timer: ReturnType<typeof setTimeout> | null = null;
+      const cleanup = () => {
+        if (timer) clearTimeout(timer);
+        URL.revokeObjectURL(objectUrl);
+      };
+      // Safety timeout — if seeked never fires (common with some encodings
+      // when the video element isn't appended to the DOM), resolve null.
+      timer = setTimeout(() => { cleanup(); resolve(null); }, 10000);
 
       video.addEventListener("loadeddata", () => {
-        const seekTo = video.duration > 0 ? Math.min(1, video.duration * 0.1) : 0;
+        // Seek to 20% of the video, clamped 1.5s–5s, to skip logo/intro frames
+        const seekTo = video.duration > 0
+          ? Math.max(1.5, Math.min(5, video.duration * 0.2))
+          : 1.5;
         video.currentTime = seekTo;
       }, { once: true });
 

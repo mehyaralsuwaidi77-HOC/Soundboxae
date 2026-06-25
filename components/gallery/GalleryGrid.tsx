@@ -116,9 +116,8 @@ function Lightbox({
           <video
             src={item.videoUrl}
             controls
-            preload="none"
-            poster={item.thumbnailUrl ?? undefined}
-            muted
+            preload="metadata"
+            poster={item.thumbnailUrl || undefined}
             playsInline
             className="w-full max-h-[78vh] object-contain rounded-xl"
             style={{ background: "#000" }}
